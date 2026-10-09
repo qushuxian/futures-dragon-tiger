@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>期货仓单与交割库存全景看板 (大商所/郑商所/上期所)</title>
+    <!-- 引入离线数据垫片 (完美支持双击与 file:// 协议) -->
+    <script src="./data/coking_coal_receipts.data.js"></script>
+    <style>
+        :root {
+            --bg-page: #0B0F19;
+            --bg-navbar: #111827;
+            --bg-card: #1F2937;
+            --bg-card-header: #1E293B;
+            --bg-subtle: #242E3D;
+            --border-color: #374151;
+            --border-light: #4B5563;
+            --text-main: #F9FAFB;
+            --text-muted: #9CA3AF;
+            --text-dim: #6B7280;
+            --color-primary: #3B82F6;
+            --color-primary-hover: #2563EB;
+            --color-primary-bg: rgba(59, 130, 246, 0.15);
+            --color-up: #EF4444;
+            /* 期货增仓/累库 红色 */
+            --color-up-bg: rgba(239, 68, 68, 0.12);
+            --color-down: #10B981;
+            /* 期货减仓/去库 绿色 */
+            --color-down-bg: rgba(16, 185, 129, 0.12);
+            --color-gold: #F59E0B;
+            --color-gold-bg: rgba(245, 158, 11, 0.12);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        body.theme-light {
+            --bg-page: #F3F4F6;
+            --bg-navbar: #FFFFFF;
+            --bg-card: #FFFFFF;
+            --bg-card-header: #F9FAFB;
+            --bg-subtle: #F3F4F6;
+            --border-color: #E5E7EB;
+            --border-light: #D1D5DB;
+            --text-main: #111827;
+            --text-muted: #4B5563;
+            --text-dim: #9CA3AF;
+            --color-primary: #2563EB;
+            --color-primary-hover: #1D4ED8;
+            --color-primary-bg: #EFF6FF;
+            --color-up: #DC2626;
+            --color-up-bg: #FEF2F2;
+            --color-down: #059669;
+            --color-down-bg: #ECFDF5;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5;
+        }
+
+        /* 顶部导航栏 (固定 48px 高度，与龙虎榜像素级严格一致) */
+        .top-navbar {
+            background-color: var(--bg-navbar);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 16px;
+            height: 48px;
+            min-height: 48px;
+            max-height: 48px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: nowrap;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .nav-left-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: nowrap;
+        }
+
+        /* 页面切换 Segmented Tabs */
+        .page-nav-tabs {
+            display: inline-flex;
+            background-color: var(--bg-subtle);
+            padding: 2.5px 3px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            gap: 2px;
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        .page-tab-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3.5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            color: var(--text-muted);
+            transition: all 0.16s ease;
+            white-space: nowrap;
+        }
+
+        .page-tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .page-tab-btn.active {
+            background-color: var(--bg-card);
+            color: var(--color-primary);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 品种切换胶囊 */
+        .commodity-pills {
+            display: inline-flex;
+            background-color: var(--bg-subtle);
+            padding: 2.5px 3px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            gap: 2px;
+            flex-wrap: nowrap;
+            user-select: none;
+        }
+
+        .comm-pill {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11.5px;
+            font-weight: 600;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.16s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .comm-pill:hover {
+            color: var(--text-main);
+        }
+
+        .comm-pill.active {
+            background-color: var(--color-primary);
+            color: #FFFFFF;
+            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.4);
+        }
+
+        .comm-pill .pill-tag {
+            font-size: 10px;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        /* 顶部右侧操作按钮区 (与龙虎榜完全一致) */
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 28px;
+            padding: 0;
+            font-size: 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-main);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .btn-theme-toggle:hover {
+            background: var(--bg-card-header);
+            border-color: var(--border-light);
+            transform: scale(1.08);
+        }
+
+        .btn-theme-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* 主体布局 */
+        .main-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 顶部看板标题与交易所标识 */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .title-group {
+            display: inline-flex;
+            align-items: flex-start;
+            gap: 8px;
+            position: relative;
+        }
+
+        .title-group h1 {
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.25;
+            margin: 0;
+        }
+
+        .exchange-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 1px 7px;
+            border-radius: 4px;
+            background-color: var(--color-primary-bg);
+            color: var(--color-primary);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            white-space: nowrap;
+            align-self: flex-start;
+            transform: translateY(-4px);
+        }
+
+        .unit-tip {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* KPI 指标卡片网格 */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .kpi-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background-color: var(--color-primary);
+        }
+
+        .kpi-card.card-up::before {
+            background-color: var(--color-up);
+        }
+
+        .kpi-card.card-down::before {
+            background-color: var(--color-down);
+        }
+
+        .kpi-card.card-gold::before {
+            background-color: var(--color-gold);
+        }
+
+        .kpi-title {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .kpi-value-row {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .kpi-main-val {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .kpi-unit {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .kpi-sub-row {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-diff {
+            display: inline-flex;
+            align-items: center;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .badge-diff.up {
+            background-color: var(--color-up-bg);
+            color: var(--color-up);
+        }
+
+        .badge-diff.down {
+            background-color: var(--color-down-bg);
+            color: var(--color-down);
+        }
+
+        .badge-diff.zero {
+            background-color: var(--bg-subtle);
+            color: var(--text-muted);
+        }
+
+        /* 图表区：左右分栏 */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 1024px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .panel-title {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-legend {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* Canvas 容器 */
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 280px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* 仓库占比横向进度条列表 */
+        .wh-progress-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+            max-height: 270px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .wh-progress-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .wh-label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+
+        .wh-name {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .wh-val {
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .progress-bar-bg {
+            height: 6px;
+            background-color: var(--bg-subtle);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3B82F6, #60A5FA);
+            border-radius: 3px;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 下层明细表格 */
+        .table-panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .table-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input {
+            padding: 6px 12px 6px 28px;
+            background-color: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-main);
+            outline: none;
+            width: 220px;
+        }
+
+        .search-input:focus {
+            border-color: var(--color-primary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .data-table-wrapper {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        .data-table th {
+            background-color: var(--bg-card-header);
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .data-table th:hover {
+            color: var(--text-main);
+        }
+
+        .data-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border-color);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .data-table tr:hover td {
+            background-color: var(--bg-subtle);
+        }
+
+        .val-up {
+            color: var(--color-up);
+            font-weight: 600;
+        }
+
+        .val-down {
+            color: var(--color-down);
+            font-weight: 600;
+        }
+
+        .val-zero {
+            color: var(--text-dim);
+        }
+
+        /* 页脚 */
+        footer {
+            text-align: center;
+            padding: 16px;
+            font-size: 12px;
+            color: var(--text-dim);
+            border-top: 1px solid var(--border-color);
+            margin-top: auto;
+        }
+
+        /* Tooltip 浮窗 */
+        #chart-tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.92);
+            color: #FFFFFF;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+            z-index: 100;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+
+    <!-- 顶部固定导航栏 -->
+    <header class="top-navbar">
+        <div class="nav-left-group">
+            <!-- 核心隔离与互通：龙虎榜与仓单库存双向导航 -->
+            <div class="page-nav-tabs">
+                <a href="coking_coal_dragon_tiger.html" class="page-tab-btn" title="直达期货各在交易合约主力席位成交持仓排名">📊 席位龙虎榜</a>
+                <a href="coking_coal_receipt.html" class="page-tab-btn active" title="当前：各大指定交割仓库仓单日报与累库去库全景">🏭
+                    仓单与库存</a>
+            </div>
+
+            <!-- 8 大核心品种选择胶囊 -->
+            <div class="commodity-pills" id="commodity-pills">
+                <!-- 动态生成 8 大品种胶囊 -->
+            </div>
+        </div>
+
+        <div class="nav-actions">
+            <button class="btn-theme-toggle" id="btn-theme" title="切换深浅主题">🌙</button>
+        </div>
+    </header>
+
+    <!-- 主展示区 -->
+    <main class="main-container" id="dashboard-capture-area">
+        <!-- 仪表板头部 -->
+        <section class="dashboard-header">
+            <div class="title-group">
+                <h1 id="dash-title">焦煤 (JM) 期货仓单日报与交割库存全景</h1>
+                <span class="exchange-badge" id="dash-exchange">大连商品交易所 (DCE)</span>
+            </div>
+            <div class="unit-tip" id="dash-unit-tip">
+                单位：手 (每手 60 吨) · 数据来源：交易所官方每日仓单统计
+            </div>
+        </section>
+
+        <!-- KPI 核心指标卡片 -->
+        <section class="kpi-grid">
+            <div class="kpi-card card-primary">
+                <div class="kpi-title">
+                    <span>当前仓单总量 (Total W-Receipt)</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-main-val" id="kpi-total-receipt">--</span>
+                    <span class="kpi-unit" id="kpi-unit-text">手</span>
+                </div>
+                <div class="kpi-sub-row">
+                    <span>折合现货物理量:</span>
+                    <strong style="color: var(--text-main);" id="kpi-tonnage">-- 万吨</strong>
+                </div>
+                <div class="kpi-sub-row" id="kpi-wh-fac-split" style="margin-top: 5px; font-size: 11.5px; color: var(--text-muted); display: none; gap: 6px; align-items: center;">
+                    <span id="kpi-wh-qty" style="color: var(--text-muted);">仓库: -- 手</span>
+                    <span style="opacity: 0.4;">·</span>
+                    <span id="kpi-fac-qty" style="color: #C084FC; font-weight: 500;">厂库提货地: -- 手</span>
+                </div>
+            </div>
+
+            <div class="kpi-card" id="kpi-diff-card">
+                <div class="kpi-title">
+                    <span>较上日净增减 (Daily Change)</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-main-val" id="kpi-diff-val">--</span>
+                    <span class="kpi-unit" id="kpi-diff-unit">手</span>
+                </div>
+                <div class="kpi-sub-row">
+                    <span id="kpi-diff-badge" class="badge-diff">--</span>
+                    <span id="kpi-diff-desc">较上一交易日变化</span>
+                </div>
+            </div>
+
+            <div class="kpi-card card-gold">
+                <div class="kpi-title">
+                    <span>有效预报总量 (Forecast Volume)</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-main-val" id="kpi-forecast-val">--</span>
+                    <span class="kpi-unit" id="kpi-fc-unit">手</span>
+                </div>
+                <div class="kpi-sub-row">
+                    <span>潜在可入库注册量 (交割申请)</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>活跃交割仓库数 (Active Warehouses)</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-main-val" id="kpi-active-wh">--</span>
+                    <span class="kpi-unit">家</span>
+                </div>
+                <div class="kpi-sub-row">
+                    <span>头部首要交割港/库:</span>
+                    <strong style="color: var(--color-primary);" id="kpi-top-wh">--</strong>
+                </div>
+            </div>
+        </section>
+
+        <!-- 核心图表行：左时序走势，右仓库分布 -->
+        <section class="charts-row">
+            <!-- 左侧：近 30-90 天走势折线图与日增减柱状图 -->
+            <div class="chart-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>全市场仓单总量趋势与日度变动时序</span>
+                    </div>
+                    <div class="panel-legend">
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background-color: #3B82F6;"></span>
+                            <span>总仓单量 (折线)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background-color: #EF4444;"></span>
+                            <span>累库增仓 (柱)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background-color: #10B981;"></span>
+                            <span>注销出库 (柱)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="trend-canvas"></canvas>
+                    <div id="chart-tooltip"></div>
+                </div>
+            </div>
+
+            <!-- 右侧：指定交割仓库仓单份额排名 -->
+            <div class="chart-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>指定交割仓库/港口仓单分布</span>
+                    </div>
+                </div>
+                <div class="wh-progress-list" id="wh-progress-list">
+                    <!-- 动态填充各仓库横向进度条 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 下层：交割仓库明细变动流水表 -->
+        <section class="table-panel">
+            <div class="table-toolbar">
+                <div class="panel-title">
+                    <span>各交割仓库当日注册仓单明细</span>
+                </div>
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="table-search" placeholder="搜索交割仓库或区域...">
+                </div>
+            </div>
+            <div class="data-table-wrapper">
+                <table class="data-table" id="wh-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="name">指定交割仓库 / 分库 ⬍</th>
+                            <th data-sort="region">所属区域 / 属性 ⬍</th>
+                            <th data-sort="last_receipt">昨日仓单 (<span class="col-unit">手</span>) ⬍</th>
+                            <th data-sort="today_receipt">今日仓单 (<span class="col-unit">手</span>) ⬍</th>
+                            <th data-sort="diff">较上日增减 (<span class="col-unit">手</span>) ⬍</th>
+                            <th data-sort="forecast">有效预报 (<span class="col-unit">手</span>) ⬍</th>
+                            <th data-sort="share_pct">全市场占比 ⬍</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wh-table-body">
+                        <!-- 动态渲染仓库表格 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        大商所 / 郑商所 / 上期所 期货仓单与交割库存自动化监控大屏 · 数据更新后自动归档至 data/receipt_daily/ · 支持纯静态离线双击打开
+    </footer>
+
+    <script>
+        // 全局状态管理
+        let currentCommodity = "JM";
+        let dataset = (typeof window !== 'undefined' && window.__COKING_COAL_RECEIPT_DATA__) ? window.__COKING_COAL_RECEIPT_DATA__ : null;
+        let sortField = "today_receipt";
+        let sortAsc = false;
+        let searchKeyword = "";
+
+        // 初始化
+        window.addEventListener("DOMContentLoaded", () => {
+            initTheme();
+            loadData();
+            initEventHandlers();
+        });
+
+        // 尝试拉取或使用离线垫片
+        async function loadData() {
+            if (!dataset) {
+                try {
+                    const res = await fetch("./data/coking_coal_receipts.json?_t=" + Date.now());
+                    if (res.ok) {
+                        dataset = await res.json();
+                    }
+                } catch (e) {
+                    console.warn("无法从网络异步加载 JSON，继续尝试使用垫片");
+                }
+            }
+
+            if (!dataset || !dataset.commodities) {
+                alert("未检测到仓单数据，请先在终端运行：python3 run_daily_sync.py");
+                return;
+            }
+
+            // 渲染导航胶囊
+            renderCommodityPills();
+            // 渲染当前品种数据
+            renderDashboard(currentCommodity);
+        }
+
+        // 渲染品种胶囊
+        function renderCommodityPills() {
+            const container = document.getElementById("commodity-pills");
+            container.innerHTML = "";
+            const commList = Object.keys(dataset.commodities);
+            commList.forEach(code => {
+                const item = dataset.commodities[code];
+                const btn = document.createElement("button");
+                btn.className = "comm-pill" + (code === currentCommodity ? " active" : "");
+                btn.innerHTML = `<span>${item.name}</span><span class="pill-tag">${code}</span>`;
+                btn.addEventListener("click", () => {
+                    if (currentCommodity === code) return;
+                    currentCommodity = code;
+                    document.querySelectorAll(".comm-pill").forEach(el => el.classList.remove("active"));
+                    btn.classList.add("active");
+                    renderDashboard(code);
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        // 核心渲染函数
+        function renderDashboard(code) {
+            const comm = dataset.commodities[code];
+            if (!comm) return;
+
+            const isSHFE = comm.exchange && (comm.exchange.includes("上期所") || comm.exchange.includes("SHFE"));
+
+            // 1. 更新看板头部元信息
+            document.getElementById("dash-title").textContent = `${comm.name} (${comm.code}) 期货仓单日报与交割库存全景`;
+            document.getElementById("dash-exchange").textContent = comm.exchange || '--';
+            if (isSHFE) {
+                document.getElementById("dash-unit-tip").textContent = `最新交易日：${dataset.latest_trade_date || '--'} · 计量单位：吨 (交易所官方原生长单标准单位) · 权威数据源：上海期货交易所官方每日仓单统计`;
+            } else {
+                document.getElementById("dash-unit-tip").textContent = `最新交易日：${dataset.latest_trade_date || '--'} · 计量单位：${comm.unit} (每手 ${comm.ton_per_hand} 吨) · 权威数据源：交易所官方结算仓单日报`;
+            }
+
+            // 更新表格列单位标识
+            document.querySelectorAll(".col-unit").forEach(el => el.textContent = comm.unit);
+
+            // 2. 更新 KPI
+            const sm = comm.latest_summary || {};
+            const total = sm.total_receipt || 0;
+            const diff = sm.diff || 0;
+            const forecast = sm.forecast || 0;
+            const whQty = sm.warehouse_receipt != null ? sm.warehouse_receipt : total;
+            const facQty = sm.factory_receipt || 0;
+            const totalTon = sm.total_tonnage || (isSHFE ? total : total * comm.ton_per_hand);
+
+            document.getElementById("kpi-total-receipt").textContent = total.toLocaleString();
+            document.getElementById("kpi-unit-text").textContent = comm.unit;
+            document.getElementById("kpi-diff-unit").textContent = comm.unit;
+            document.getElementById("kpi-fc-unit").textContent = comm.unit;
+
+            if (isSHFE) {
+                document.getElementById("kpi-tonnage").textContent = `${(total / 10000).toFixed(2)} 万吨`;
+            } else {
+                document.getElementById("kpi-tonnage").textContent = `${(totalTon / 10000).toFixed(2)} 万吨 (${totalTon.toLocaleString()} 吨)`;
+            }
+
+            // 仓库与厂库提货地明细拆分
+            const splitEl = document.getElementById("kpi-wh-fac-split");
+            if (splitEl) {
+                if (facQty > 0 || (isSHFE && total > 0)) {
+                    splitEl.style.display = "flex";
+                    const facName = isSHFE ? "厂库提货地" : "厂库";
+                    document.getElementById("kpi-wh-qty").textContent = `仓库: ${whQty.toLocaleString()} ${comm.unit}`;
+                    document.getElementById("kpi-fac-qty").textContent = `${facName}: ${facQty.toLocaleString()} ${comm.unit}`;
+                } else if (facQty > 0) {
+                    splitEl.style.display = "flex";
+                    document.getElementById("kpi-wh-qty").textContent = `仓库: ${whQty.toLocaleString()} 手`;
+                    document.getElementById("kpi-fac-qty").textContent = `厂库: ${facQty.toLocaleString()} 手`;
+                } else {
+                    splitEl.style.display = "none";
+                }
+            }
+
+            // 较上日增减
+            const diffEl = document.getElementById("kpi-diff-val");
+            const badgeEl = document.getElementById("kpi-diff-badge");
+            const cardEl = document.getElementById("kpi-diff-card");
+            cardEl.classList.remove("card-up", "card-down");
+
+            if (diff > 0) {
+                diffEl.textContent = `+${diff.toLocaleString()}`;
+                diffEl.className = "kpi-main-val val-up";
+                badgeEl.textContent = "累库增加 ↑";
+                badgeEl.className = "badge-diff up";
+                cardEl.classList.add("card-up");
+            } else if (diff < 0) {
+                diffEl.textContent = diff.toLocaleString();
+                diffEl.className = "kpi-main-val val-down";
+                badgeEl.textContent = "注销出库 ↓";
+                badgeEl.className = "badge-diff down";
+                cardEl.classList.add("card-down");
+            } else {
+                diffEl.textContent = "0";
+                diffEl.className = "kpi-main-val";
+                badgeEl.textContent = "持平 ＝";
+                badgeEl.className = "badge-diff zero";
+            }
+
+            document.getElementById("kpi-forecast-val").textContent = forecast.toLocaleString();
+            document.getElementById("kpi-active-wh").textContent = (comm.latest_warehouses || []).length;
+            const topWh = (comm.latest_warehouses && comm.latest_warehouses.length > 0) ? comm.latest_warehouses[0].name : "--";
+            document.getElementById("kpi-top-wh").textContent = topWh;
+
+            // 3. 渲染左侧趋势折线+柱状图
+            renderTrendChart(comm.history_trend || []);
+
+            // 4. 渲染右侧仓库进度条排名
+            renderWarehouseProgress(comm.latest_warehouses || [], total);
+
+            // 5. 渲染明细表格
+            renderWarehouseTable(comm.latest_warehouses || []);
+        }
+
+        // 绘制近 33 天走势组合图 (Canvas 高清绘制)
+        function renderTrendChart(history) {
+            const canvas = document.getElementById("trend-canvas");
+            const ctx = canvas.getContext("2d");
+            const dpr = window.devicePixelRatio || 1;
+
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            const w = rect.width;
+            const h = rect.height;
+            const padL = 55;
+            const padR = 45;
+            const padT = 30;
+            const padB = 40;
+            const plotW = w - padL - padR;
+            const plotH = h - padT - padB;
+
+            ctx.clearRect(0, 0, w, h);
+
+            if (!history || history.length === 0) return;
+
+            // 提取数据
+            const dates = history.map(d => d.date);
+            const totals = history.map(d => d.total_receipt);
+            const diffs = history.map(d => d.diff);
+
+            // 计算极值
+            const minTot = Math.floor(Math.min(...totals) * 0.95);
+            const maxTot = Math.ceil(Math.max(...totals) * 1.05);
+            const maxDiffAbs = Math.max(Math.max(...diffs.map(Math.abs)), 10);
+
+            // 坐标轴背景网格线
+            ctx.strokeStyle = document.body.classList.contains("theme-light") ? "#E5E7EB" : "#374151";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i <= 4; i++) {
+                const y = padT + (plotH / 4) * i;
+                ctx.moveTo(padL, y);
+                ctx.lineTo(w - padR, y);
+                // 绘制左侧刻度
+                const val = Math.round(maxTot - ((maxTot - minTot) / 4) * i);
+                ctx.fillStyle = document.body.classList.contains("theme-light") ? "#6B7280" : "#9CA3AF";
+                ctx.font = "10px -apple-system, sans-serif";
+                ctx.textAlign = "right";
+                ctx.fillText(val.toLocaleString(), padL - 8, y + 3);
+            }
+            ctx.stroke();
+
+            // 绘制横轴日期刻度
+            ctx.textAlign = "center";
+            const step = Math.ceil(history.length / 6);
+            for (let i = 0; i < history.length; i += step) {
+                const x = padL + (i / (history.length - 1)) * plotW;
+                const dStr = dates[i].substring(5); // MM-DD
+                ctx.fillText(dStr, x, h - 15);
+            }
+
+            // 1. 绘制日度变动柱状图 (在背景层，避免遮挡折线)
+            const barW = Math.max(3, (plotW / history.length) * 0.5);
+            const zeroY = padT + (plotH / 2); // 零线在中央或根据绝对值定
+            diffs.forEach((df, i) => {
+                const x = padL + (i / (history.length - 1)) * plotW - barW / 2;
+                const barH = (Math.abs(df) / maxDiffAbs) * (plotH * 0.4);
+                if (df > 0) {
+                    ctx.fillStyle = "rgba(239, 68, 68, 0.4)";
+                    ctx.fillRect(x, zeroY - barH, barW, barH);
+                } else if (df < 0) {
+                    ctx.fillStyle = "rgba(16, 185, 129, 0.4)";
+                    ctx.fillRect(x, zeroY, barW, barH);
+                }
+            });
+
+            // 2. 绘制总仓单面积与折线
+            const points = totals.map((tot, i) => {
+                const x = padL + (i / (history.length - 1)) * plotW;
+                const y = padT + plotH - ((tot - minTot) / (maxTot - minTot)) * plotH;
+                return { x, y, tot, date: dates[i], diff: diffs[i] };
+            });
+
+            // 渐变面积阴影
+            const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+            grad.addColorStop(0, "rgba(59, 130, 246, 0.35)");
+            grad.addColorStop(1, "rgba(59, 130, 246, 0.0)");
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, padT + plotH);
+            points.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.lineTo(points[points.length - 1].x, padT + plotH);
+            ctx.closePath();
+            ctx.fill();
+
+            // 蓝色折线
+            ctx.strokeStyle = "#3B82F6";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            points.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            });
+            ctx.stroke();
+
+            // 数据点高亮圈
+            points.forEach(p => {
+                ctx.fillStyle = "#1E293B";
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#60A5FA";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+
+            // 保存 points 供 hover tooltip 交互
+            canvas._points = points;
+        }
+
+        // 交互 Tooltip
+        const canvas = document.getElementById("trend-canvas");
+        const tooltip = document.getElementById("chart-tooltip");
+
+        canvas.addEventListener("mousemove", (e) => {
+            const points = canvas._points;
+            if (!points) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // 寻找距离最近的点
+            let closest = null;
+            let minDist = 999;
+            points.forEach(p => {
+                const d = Math.abs(p.x - mouseX);
+                if (d < minDist) {
+                    minDist = d;
+                    closest = p;
+                }
+            });
+
+            if (closest && minDist < 30) {
+                tooltip.style.display = "block";
+                tooltip.style.left = `${closest.x + 10}px`;
+                tooltip.style.top = `${closest.y - 45}px`;
+                const diffBadge = closest.diff > 0 ? `<span style="color:#EF4444;">+${closest.diff}</span>` : (closest.diff < 0 ? `<span style="color:#10B981;">${closest.diff}</span>` : `<span style="color:#9CA3AF;">0</span>`);
+                tooltip.innerHTML = `
+                    <div style="font-weight:700; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px; margin-bottom:4px;">📅 ${closest.date}</div>
+                    <div>仓单总量: <strong>${closest.tot.toLocaleString()}</strong> 手</div>
+                    <div>较上日变动: ${diffBadge} 手</div>
+                `;
+            } else {
+                tooltip.style.display = "none";
+            }
+        });
+
+        canvas.addEventListener("mouseleave", () => {
+            tooltip.style.display = "none";
+        });
+
+        // 渲染右侧指定仓库进度条
+        function renderWarehouseProgress(warehouses, total) {
+            const list = document.getElementById("wh-progress-list");
+            list.innerHTML = "";
+            if (!warehouses || warehouses.length === 0) {
+                list.innerHTML = `<div style="color:var(--text-muted); padding:20px; text-align:center;">暂无指定交割仓库数据</div>`;
+                return;
+            }
+
+            warehouses.slice(0, 10).forEach(w => {
+                const item = document.createElement("div");
+                item.className = "wh-progress-item";
+                const isSHFE = currentCommodity && ['RB', 'HC', 'AO'].includes(currentCommodity);
+                const unitStr = isSHFE ? "吨" : "手";
+                let valLabel = `${w.today_receipt.toLocaleString()} ${unitStr} (${w.share_pct}%)`;
+                let barWidth = Math.min(100, Math.max(w.today_receipt > 0 ? 3 : 0, w.share_pct));
+                if (w.today_receipt === 0 && w.forecast > 0) {
+                    valLabel = `<span style="color:var(--color-gold);font-weight:600;">预报 ${w.forecast.toLocaleString()} ${unitStr}</span>`;
+                    barWidth = Math.min(100, Math.max(15, (w.forecast / (total || 1000)) * 100));
+                }
+                let facTag = "";
+                if (w.is_factory) {
+                    const isPickup = (w.region && w.region.includes("厂库提货地")) || isSHFE;
+                    const tagText = isPickup ? "厂库提货地" : "厂库";
+                    facTag = `<span style="display:inline-block; font-size:10px; font-weight:600; padding:1px 5px; border-radius:3px; margin-left:5px; background:rgba(168,85,247,0.15); color:#C084FC; border:1px solid rgba(168,85,247,0.3); vertical-align:middle;">${tagText}</span>`;
+                }
+                item.innerHTML = `
+                    <div class="wh-label-row">
+                        <span class="wh-name">${w.name}${facTag} <small style="color:var(--text-dim);font-weight:400;">(${w.region})</small></span>
+                        <span class="wh-val">${valLabel}</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: ${barWidth}%; ${w.today_receipt === 0 && w.forecast > 0 ? 'background: linear-gradient(90deg, #F59E0B, #FBBF24);' : ''}"></div>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // 渲染下层明细表格
+        function renderWarehouseTable(warehouses) {
+            const tbody = document.getElementById("wh-table-body");
+            tbody.innerHTML = "";
+
+            let list = [...warehouses];
+            // 搜索过滤
+            if (searchKeyword.trim()) {
+                const kw = searchKeyword.toLowerCase();
+                list = list.filter(w => w.name.toLowerCase().includes(kw) || w.region.toLowerCase().includes(kw));
+            }
+
+            // 排序
+            list.sort((a, b) => {
+                let vA = a[sortField];
+                let vB = b[sortField];
+                if (typeof vA === "string") {
+                    return sortAsc ? vA.localeCompare(vB) : vB.localeCompare(vA);
+                }
+                return sortAsc ? (vA - vB) : (vB - vA);
+            });
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted);">未找到符合条件的交割仓库记录</td></tr>`;
+                return;
+            }
+
+            const isSHFE = currentCommodity && ['RB', 'HC', 'AO'].includes(currentCommodity);
+            const unitStr = isSHFE ? "吨" : "手";
+            list.forEach(w => {
+                const tr = document.createElement("tr");
+                const diffCls = w.diff > 0 ? "val-up" : (w.diff < 0 ? "val-down" : "val-zero");
+                const diffStr = w.diff > 0 ? `+${w.diff.toLocaleString()}` : w.diff.toLocaleString();
+                let facTag = "";
+                if (w.is_factory) {
+                    const isPickup = (w.region && w.region.includes("厂库提货地")) || isSHFE;
+                    const tagText = isPickup ? "厂库提货地" : "厂库";
+                    facTag = `<span style="display:inline-block; font-size:10.5px; font-weight:600; padding:1px 5px; border-radius:3px; margin-left:6px; background:rgba(168,85,247,0.15); color:#C084FC; border:1px solid rgba(168,85,247,0.3); vertical-align:middle;">${tagText}</span>`;
+                }
+                tr.innerHTML = `
+                    <td style="font-weight:600;">${w.name}${facTag}</td>
+                    <td style="color:var(--text-muted);">${w.region}</td>
+                    <td>${w.last_receipt.toLocaleString()}</td>
+                    <td style="font-weight:700;">${w.today_receipt.toLocaleString()}</td>
+                    <td class="${diffCls}">${diffStr}</td>
+                    <td style="color:var(--color-gold); font-weight:600;">${w.forecast > 0 ? w.forecast.toLocaleString() : '-'}</td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span>${w.share_pct}%</span>
+                            <div class="progress-bar-bg" style="width:60px; height:4px;">
+                                <div class="progress-bar-fill" style="width:${w.share_pct}%;"></div>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 表格搜索与表头排序绑定
+        function initEventHandlers() {
+            document.getElementById("table-search").addEventListener("input", (e) => {
+                searchKeyword = e.target.value;
+                const comm = dataset.commodities[currentCommodity];
+                if (comm) renderWarehouseTable(comm.latest_warehouses || []);
+            });
+
+            document.querySelectorAll("#wh-table th").forEach(th => {
+                th.addEventListener("click", () => {
+                    const field = th.getAttribute("data-sort");
+                    if (!field) return;
+                    if (sortField === field) {
+                        sortAsc = !sortAsc;
+                    } else {
+                        sortField = field;
+                        sortAsc = false;
+                    }
+                    const comm = dataset.commodities[currentCommodity];
+                    if (comm) renderWarehouseTable(comm.latest_warehouses || []);
+                });
+            });
+
+            // 窗口 resize 重绘图表
+            window.addEventListener("resize", () => {
+                const comm = dataset.commodities[currentCommodity];
+                if (comm) renderTrendChart(comm.history_trend || []);
+            });
+        }
+
+        // 深浅主题切换 (与龙虎榜共享 coking_coal_theme 状态与视觉图标)
+        function initTheme() {
+            const btnTheme = document.getElementById("btn-theme");
+            const saved = localStorage.getItem("coking_coal_theme");
+            if (saved === "light") {
+                document.body.classList.replace("theme-dark", "theme-light");
+                if (btnTheme) btnTheme.textContent = "☀️";
+            }
+            if (btnTheme) {
+                btnTheme.addEventListener("click", () => {
+                    if (document.body.classList.contains("theme-dark")) {
+                        document.body.classList.replace("theme-dark", "theme-light");
+                        btnTheme.textContent = "☀️";
+                        localStorage.setItem("coking_coal_theme", "light");
+                    } else {
+                        document.body.classList.replace("theme-light", "theme-dark");
+                        btnTheme.textContent = "🌙";
+                        localStorage.setItem("coking_coal_theme", "dark");
+                    }
+                    const comm = dataset.commodities[currentCommodity];
+                    if (comm) renderTrendChart(comm.history_trend || []);
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,57 @@
+name: Daily Futures Dragon Tiger & Receipts Sync
+
+on:
+  # 1. 允许外部 Webhook (如 cron-job.org) 精准远程调用触发
+  repository_dispatch:
+    types: [daily_sync]
+
+  # 2. 支持在 GitHub Actions 网页端随时手动一键触发
+  workflow_dispatch:
+
+  # 3. GitHub 内置定时器双保险 (每个工作日北京时间 15:30 至 19:00，对应 UTC 07:30 至 11:00)
+  schedule:
+    - cron: '30,45 7 * * 1-5'
+    - cron: '*/15 8,9,10 * * 1-5'
+    - cron: '0 11 * * 1-5'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 赋予 Actions 回写提交数据的写权限
+
+    steps:
+      - name: 检出代码 (包含完整历史数据与 SQLite 数据库)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 配置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: 安装依赖包
+        run: |
+          pip install -r requirements.txt
+
+      - name: 执行龙虎榜与交割仓单全量一体化同步
+        run: |
+          python3 run_daily_sync.py
+
+      - name: 检查数据更新并自动持久化回写至 Git 仓库
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # 暂存数据目录 (包括 SQLite 库与前端物化 json / js 垫片)
+          git add data/
+
+          if ! git diff-index --quiet HEAD; then
+            echo "检测到数据更新，正在提交并回写仓库..."
+            git commit -m "chore(data): auto-sync dragon-tiger & receipts $(date +'%Y-%m-%d %H:%M') [skip ci]"
+            git push
+          else
+            echo "数据已是最新或无需更新，跳过提交。"
+          fi

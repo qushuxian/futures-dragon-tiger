@@ -1183,21 +1183,57 @@
             display: flex;
             flex-direction: column;
             gap: 5px;
+            position: relative;
         }
         .drawer-filter-item .filter-label {
             font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
         }
         .drawer-filter-item .custom-dropdown {
             width: 100%;
         }
+        .drawer-filter-item .custom-dropdown.open {
+            z-index: 100;
+        }
         .drawer-filter-item .dropdown-trigger {
             width: 100%;
             justify-content: space-between;
-            padding: 8px 12px;
+            padding: 9px 12px;
+            font-size: 13px;
         }
         .drawer-filter-item .dropdown-menu {
             width: 100%;
             min-width: unset;
+            max-height: 240px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+        }
+        .drawer-apply-btn {
+            margin-top: 14px;
+            width: 100%;
+            padding: 10px 14px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+            transition: all 0.15s ease;
+        }
+        .drawer-apply-btn:hover {
+            filter: brightness(1.08);
+        }
+        .drawer-apply-btn:active {
+            transform: scale(0.98);
         }
 
         /* ====== 移动端响应式断点 ====== */
@@ -1263,7 +1299,7 @@
         <div class="drawer-section">
             <div class="drawer-section-label">数据筛选</div>
             <div class="drawer-filter-group">
-                <div class="drawer-filter-item">
+                <div class="drawer-filter-item" style="z-index: 30;">
                     <label class="filter-label">交易日：</label>
                     <div class="custom-dropdown" id="drawer-dropdown-trade-date">
                         <button type="button" class="dropdown-trigger" id="drawer-trigger-trade-date" aria-haspopup="listbox" aria-expanded="false">
@@ -1275,7 +1311,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="drawer-filter-item">
+                <div class="drawer-filter-item" style="z-index: 20;">
                     <label class="filter-label">品种：</label>
                     <div class="custom-dropdown" id="drawer-dropdown-commodity">
                         <button type="button" class="dropdown-trigger" id="drawer-trigger-commodity" aria-haspopup="listbox" aria-expanded="false">
@@ -1287,7 +1323,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="drawer-filter-item">
+                <div class="drawer-filter-item" style="z-index: 10;">
                     <label class="filter-label">合约：</label>
                     <div class="custom-dropdown" id="drawer-dropdown-contract">
                         <button type="button" class="dropdown-trigger" id="drawer-trigger-contract" aria-haspopup="listbox" aria-expanded="false">
@@ -1300,6 +1336,9 @@
                     </div>
                 </div>
             </div>
+            <button type="button" class="drawer-apply-btn" id="drawer-apply-btn">
+                <span>📊 查看分析看板</span>
+            </button>
         </div>
     </nav>
 
@@ -2023,7 +2062,7 @@
             });
         }
 
-        // 初始化/联动顶部筛选组件（方案一毛玻璃下拉 + 方案二品种分段胶囊）
+        // 初始化/联动顶部筛选组件（桌面端顶栏 + 移动端侧滑抽屉双端直连联动）
         function initFilterSelectors() {
             // 1. 填充交易日候选列表（优先提取 history 所有归档日期，从最新到历史倒序排）
             let dateList = [];
@@ -2039,13 +2078,32 @@
                 selectedDate = dateList[0] || currentDataset.query_date || '';
             }
 
-            // 渲染交易日定制下拉框
+            // 渲染交易日定制下拉框（桌面端与移动端抽屉双端同步渲染）
             const triggerDateText = document.getElementById('text-trade-date');
             const menuDate = document.getElementById('menu-trade-date');
-            if (triggerDateText && menuDate) {
-                const curWk = getWeekdayStr(selectedDate);
-                triggerDateText.textContent = selectedDate ? (curWk ? `${selectedDate} (${curWk})` : selectedDate) : '选择日期';
-                menuDate.innerHTML = '';
+            const drawerDateText = document.getElementById('drawer-text-trade-date');
+            const drawerMenuDate = document.getElementById('drawer-menu-trade-date');
+
+            function selectDate(dt) {
+                selectedDate = dt;
+                const curWk = getWeekdayStr(dt);
+                const displayText = dt ? (curWk ? `${dt} (${curWk})` : dt) : '选择日期';
+                if (triggerDateText) triggerDateText.textContent = displayText;
+                if (drawerDateText) drawerDateText.textContent = displayText;
+
+                document.querySelectorAll('#menu-trade-date .dropdown-item, #drawer-menu-trade-date .dropdown-item').forEach(el => {
+                    el.classList.toggle('selected', el.getAttribute('data-value') === dt);
+                });
+                closeAllDropdowns();
+
+                selectedContractCode = ''; // 切换交易日后重置合约，自动选该日成交最大主力
+                updateContractOptions();
+                renderContractData();
+            }
+
+            function populateDateMenu(container) {
+                if (!container) return;
+                container.innerHTML = '';
                 dateList.forEach((dt, idx) => {
                     const item = document.createElement('div');
                     item.className = 'dropdown-item' + (dt === selectedDate ? ' selected' : '');
@@ -2066,23 +2124,21 @@
 
                     item.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        selectedDate = dt;
-                        const w = getWeekdayStr(dt);
-                        triggerDateText.textContent = w ? `${dt} (${w})` : dt;
-                        menuDate.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('selected'));
-                        item.classList.add('selected');
-                        closeAllDropdowns();
-
-                        selectedContractCode = ''; // 切换交易日后重置合约，自动选该日成交最大主力
-                        updateContractOptions();
-                        renderContractData();
+                        selectDate(dt);
                     });
 
-                    menuDate.appendChild(item);
+                    container.appendChild(item);
                 });
             }
 
-            // 2. 渲染品种选项为分段滑动胶囊排 (Segmented Pill Bar)
+            const curWk = getWeekdayStr(selectedDate);
+            const initDateText = selectedDate ? (curWk ? `${selectedDate} (${curWk})` : selectedDate) : '选择日期';
+            if (triggerDateText) triggerDateText.textContent = initDateText;
+            if (drawerDateText) drawerDateText.textContent = initDateText;
+            populateDateMenu(menuDate);
+            populateDateMenu(drawerMenuDate);
+
+            // 2. 渲染品种选项
             const commodities = currentDataset.commodities || [
                 { code: 'JM', name: '焦煤 (JM)' },
                 { code: 'J', name: '焦炭 (J)' },
@@ -2100,21 +2156,40 @@
 
             const triggerCommText = document.getElementById('text-commodity');
             const menuComm = document.getElementById('menu-commodity');
-            const activeCommObj = commodities.find(c => c.code === selectedCommodityCode);
-            if (triggerCommText) {
-                triggerCommText.textContent = activeCommObj ? activeCommObj.name : selectedCommodityCode;
+            const drawerCommText = document.getElementById('drawer-text-commodity');
+            const drawerMenuComm = document.getElementById('drawer-menu-commodity');
+
+            function selectCommodity(commCode, commName) {
+                if (selectedCommodityCode === commCode) {
+                    closeAllDropdowns();
+                    return;
+                }
+                selectedCommodityCode = commCode;
+                if (triggerCommText) triggerCommText.textContent = commName;
+                if (drawerCommText) drawerCommText.textContent = commName;
+
+                document.querySelectorAll('#menu-commodity .dropdown-item, #drawer-menu-commodity .dropdown-item').forEach(el => {
+                    el.classList.toggle('selected', el.getAttribute('data-value') === commCode);
+                });
+                closeAllDropdowns();
+
+                selectedContractCode = ''; // 切换品种后重置，自动选中新选品种下成交量最大的主力合约
+                updateContractOptions();
+                renderContractData();
             }
 
-            if (menuComm) {
-                menuComm.innerHTML = '';
+            function populateCommodityMenu(container) {
+                if (!container) return;
+                container.innerHTML = '';
                 commodities.forEach(item => {
                     const cleanName = (item.name || item.code).replace(/\s*\(.*?\)/g, '').trim();
+                    const displayName = `${cleanName} (${item.code})`;
                     const el = document.createElement('div');
                     el.className = 'dropdown-item' + (item.code === selectedCommodityCode ? ' selected' : '');
                     el.setAttribute('role', 'option');
                     el.setAttribute('data-value', item.code);
                     el.innerHTML = `
-                        <span class="item-label">${cleanName} (${item.code})</span>
+                        <span class="item-label">${displayName}</span>
                         <div style="display:inline-flex; align-items:center; gap:6px;">
                             <span class="item-check">✓</span>
                         </div>
@@ -2122,24 +2197,19 @@
 
                     el.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        if (selectedCommodityCode === item.code) {
-                            closeAllDropdowns();
-                            return;
-                        }
-                        selectedCommodityCode = item.code;
-                        if (triggerCommText) triggerCommText.textContent = item.name;
-                        menuComm.querySelectorAll('.dropdown-item').forEach(it => it.classList.remove('selected'));
-                        el.classList.add('selected');
-                        closeAllDropdowns();
-
-                        selectedContractCode = ''; // 切换品种后重置，自动选中新选品种下成交量最大的主力合约
-                        updateContractOptions();
-                        renderContractData();
+                        selectCommodity(item.code, item.name || displayName);
                     });
 
-                    menuComm.appendChild(el);
+                    container.appendChild(el);
                 });
             }
+
+            const activeCommObj = commodities.find(c => c.code === selectedCommodityCode);
+            const initCommText = activeCommObj ? activeCommObj.name : selectedCommodityCode;
+            if (triggerCommText) triggerCommText.textContent = initCommText;
+            if (drawerCommText) drawerCommText.textContent = initCommText;
+            populateCommodityMenu(menuComm);
+            populateCommodityMenu(drawerMenuComm);
 
             // 辅助：获取指定合约当日成交量（优先取合计成交量，若无则累加前20席位成交量）
             function getContractVolume(cCode) {
@@ -2172,50 +2242,64 @@
 
                 const triggerContText = document.getElementById('text-contract');
                 const menuCont = document.getElementById('menu-contract');
-                if (!menuCont) return;
+                const drawerContText = document.getElementById('drawer-text-contract');
+                const drawerMenuCont = document.getElementById('drawer-menu-contract');
 
                 const activeContractObj = contractList.find(c => c.code === selectedContractCode);
-                if (triggerContText) {
-                    triggerContText.textContent = activeContractObj ? `${activeContractObj.name} (${activeContractObj.code})` : (selectedContractCode || '无合约');
-                }
+                const initContText = activeContractObj ? `${activeContractObj.name} (${activeContractObj.code})` : (selectedContractCode || '无合约');
+                if (triggerContText) triggerContText.textContent = initContText;
+                if (drawerContText) drawerContText.textContent = initContText;
 
-                menuCont.innerHTML = '';
-                if (contractList.length === 0) {
-                    menuCont.innerHTML = '<div class="dropdown-item" style="opacity:0.5; cursor:default;">暂无合约数据</div>';
-                    return;
-                }
+                function selectContract(cCode, cName) {
+                    selectedContractCode = cCode;
+                    const displayText = `${cName || cCode} (${cCode})`;
+                    if (triggerContText) triggerContText.textContent = displayText;
+                    if (drawerContText) drawerContText.textContent = displayText;
 
-                contractList.forEach((c, idx) => {
-                    const item = document.createElement('div');
-                    item.className = 'dropdown-item' + (c.code === selectedContractCode ? ' selected' : '');
-                    item.setAttribute('role', 'option');
-                    item.setAttribute('data-value', c.code);
-
-                    const mainTag = idx === 0 ? '<span class="item-tag main">主力</span>' : '';
-
-                    item.innerHTML = `
-                        <span class="item-label">${c.name || c.code} (${c.code})</span>
-                        <div style="display:inline-flex; align-items:center; gap:6px;">
-                            ${mainTag}
-                            <span class="item-check">✓</span>
-                        </div>
-                    `;
-
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        selectedContractCode = c.code;
-                        if (triggerContText) {
-                            triggerContText.textContent = `${c.name || c.code} (${c.code})`;
-                        }
-                        menuCont.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('selected'));
-                        item.classList.add('selected');
-                        closeAllDropdowns();
-
-                        renderContractData();
+                    document.querySelectorAll('#menu-contract .dropdown-item, #drawer-menu-contract .dropdown-item').forEach(el => {
+                        el.classList.toggle('selected', el.getAttribute('data-value') === cCode);
                     });
+                    closeAllDropdowns();
+                    renderContractData();
+                    // 移动端选择合约后自动关闭抽屉
+                    closeDrawer();
+                }
 
-                    menuCont.appendChild(item);
-                });
+                function populateContractMenu(container) {
+                    if (!container) return;
+                    container.innerHTML = '';
+                    if (contractList.length === 0) {
+                        container.innerHTML = '<div class="dropdown-item" style="opacity:0.5; cursor:default;">暂无合约数据</div>';
+                        return;
+                    }
+
+                    contractList.forEach((c, idx) => {
+                        const item = document.createElement('div');
+                        item.className = 'dropdown-item' + (c.code === selectedContractCode ? ' selected' : '');
+                        item.setAttribute('role', 'option');
+                        item.setAttribute('data-value', c.code);
+
+                        const mainTag = idx === 0 ? '<span class="item-tag main">主力</span>' : '';
+
+                        item.innerHTML = `
+                            <span class="item-label">${c.name || c.code} (${c.code})</span>
+                            <div style="display:inline-flex; align-items:center; gap:6px;">
+                                ${mainTag}
+                                <span class="item-check">✓</span>
+                            </div>
+                        `;
+
+                        item.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            selectContract(c.code, c.name);
+                        });
+
+                        container.appendChild(item);
+                    });
+                }
+
+                populateContractMenu(menuCont);
+                populateContractMenu(drawerMenuCont);
             }
 
             updateContractOptions();
@@ -2651,6 +2735,7 @@
             document.body.style.overflow = 'hidden';
         }
         function closeDrawer() {
+            closeAllDropdowns();
             const panel = document.getElementById('drawer-panel');
             const backdrop = document.getElementById('drawer-backdrop');
             const hamburger = document.getElementById('hamburger-btn');
@@ -2663,70 +2748,13 @@
             const hamburger = document.getElementById('hamburger-btn');
             const closeBtn = document.getElementById('drawer-close');
             const backdrop = document.getElementById('drawer-backdrop');
+            const applyBtn = document.getElementById('drawer-apply-btn');
             if (hamburger) hamburger.addEventListener('click', openDrawer);
             if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
             if (backdrop) backdrop.addEventListener('click', closeDrawer);
+            if (applyBtn) applyBtn.addEventListener('click', closeDrawer);
             document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
         })();
-
-        // ====== 抽屉内筛选器同步逻辑 ======
-        // 将桌面端下拉框的选项同步镜像到抽屉内的下拉框
-        function syncDrawerDropdown(desktopMenuId, drawerMenuId, drawerTextId, desktopTextId) {
-            const desktopMenu = document.getElementById(desktopMenuId);
-            const drawerMenu = document.getElementById(drawerMenuId);
-            const drawerText = document.getElementById(drawerTextId);
-            const desktopText = document.getElementById(desktopTextId);
-            if (!desktopMenu || !drawerMenu) return;
-
-            // 使用 MutationObserver 监听桌面端下拉菜单内容变化并同步到抽屉
-            const observer = new MutationObserver(() => {
-                drawerMenu.innerHTML = desktopMenu.innerHTML;
-                if (desktopText && drawerText) drawerText.textContent = desktopText.textContent;
-                // 为抽屉内的选项绑定点击事件：点击后触发桌面端对应选项的点击
-                drawerMenu.querySelectorAll('.dropdown-item').forEach((item, idx) => {
-                    item.addEventListener('click', () => {
-                        const desktopItems = desktopMenu.querySelectorAll('.dropdown-item');
-                        if (desktopItems[idx]) desktopItems[idx].click();
-                        // 同步显示文本
-                        setTimeout(() => {
-                            if (desktopText && drawerText) drawerText.textContent = desktopText.textContent;
-                            // 关闭抽屉内的下拉
-                            const drawerDropdown = drawerMenu.closest('.custom-dropdown');
-                            if (drawerDropdown) drawerDropdown.classList.remove('open');
-                        }, 50);
-                    });
-                });
-            });
-            observer.observe(desktopMenu, { childList: true, subtree: true });
-
-            // 同步文本变化
-            if (desktopText && drawerText) {
-                const textObserver = new MutationObserver(() => {
-                    drawerText.textContent = desktopText.textContent;
-                });
-                textObserver.observe(desktopText, { childList: true, characterData: true, subtree: true });
-            }
-        }
-
-        // 为抽屉内的下拉框绑定 open/close 交互
-        document.querySelectorAll('#drawer-panel .custom-dropdown').forEach(dropdown => {
-            const trigger = dropdown.querySelector('.dropdown-trigger');
-            if (trigger) {
-                trigger.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    // 关闭其他抽屉下拉
-                    document.querySelectorAll('#drawer-panel .custom-dropdown.open').forEach(d => {
-                        if (d !== dropdown) d.classList.remove('open');
-                    });
-                    dropdown.classList.toggle('open');
-                });
-            }
-        });
-
-        // 初始化 3 个筛选器的双向同步
-        syncDrawerDropdown('menu-trade-date', 'drawer-menu-trade-date', 'drawer-text-trade-date', 'text-trade-date');
-        syncDrawerDropdown('menu-commodity', 'drawer-menu-commodity', 'drawer-text-commodity', 'text-commodity');
-        syncDrawerDropdown('menu-contract', 'drawer-menu-contract', 'drawer-text-contract', 'text-contract');
     </script>
 </body>
 

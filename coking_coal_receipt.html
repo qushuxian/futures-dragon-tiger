@@ -612,14 +612,319 @@
             z-index: 100;
             line-height: 1.4;
         }
+
+        /* ====== 移动端汉堡菜单 & 侧滑抽屉 ====== */
+
+        /* 汉堡按钮 (桌面端隐藏) */
+        .hamburger-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--text-main);
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .hamburger-btn:hover { background: var(--bg-card-header); }
+        .hamburger-btn:active { transform: scale(0.92); }
+        .hamburger-icon {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 16px;
+        }
+        .hamburger-icon span {
+            display: block;
+            height: 2px;
+            width: 100%;
+            background-color: var(--text-main);
+            border-radius: 1px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .hamburger-btn.active .hamburger-icon span:nth-child(1) {
+            transform: translateY(6px) rotate(45deg);
+        }
+        .hamburger-btn.active .hamburger-icon span:nth-child(2) {
+            opacity: 0;
+            transform: scaleX(0);
+        }
+        .hamburger-btn.active .hamburger-icon span:nth-child(3) {
+            transform: translateY(-6px) rotate(-45deg);
+        }
+
+        /* 移动端顶栏页面标题 (桌面端隐藏) */
+        .mobile-page-title {
+            display: none;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+
+        /* 侧滑抽屉遮罩 */
+        .drawer-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        .drawer-backdrop.visible {
+            display: block;
+            opacity: 1;
+        }
+
+        /* 侧滑抽屉面板 */
+        .drawer-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            max-width: 80vw;
+            height: 100vh;
+            height: 100dvh;
+            background-color: var(--bg-navbar);
+            border-right: 1px solid var(--border-color);
+            z-index: 210;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+        }
+        .drawer-panel.open {
+            transform: translateX(0);
+        }
+
+        .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .drawer-header-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .drawer-close-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.15s ease;
+        }
+        .drawer-close-btn:hover { color: var(--text-main); background: var(--bg-card-header); }
+
+        .drawer-section {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .drawer-section:last-child {
+            border-bottom: none;
+        }
+        .drawer-section-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        /* 抽屉内导航链接 */
+        .drawer-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: all 0.15s ease;
+            margin-bottom: 4px;
+        }
+        .drawer-nav-link:hover {
+            background: var(--bg-subtle);
+            color: var(--text-main);
+        }
+        .drawer-nav-link.active {
+            background: var(--color-primary-bg);
+            color: var(--color-primary);
+        }
+        .drawer-nav-link .link-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        /* 抽屉内品种按钮网格 */
+        .drawer-pills-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        .drawer-comm-pill {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 8px 6px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .drawer-comm-pill:hover {
+            color: var(--text-main);
+            border-color: var(--border-light);
+        }
+        .drawer-comm-pill.active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: #FFFFFF;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);
+        }
+        .drawer-comm-pill .pill-code {
+            font-size: 10px;
+            opacity: 0.75;
+            font-weight: 400;
+        }
+
+        /* ====== 移动端响应式断点 ====== */
+        @media (max-width: 768px) {
+            /* 显示汉堡按钮和移动端标题 */
+            .hamburger-btn { display: inline-flex; }
+            .mobile-page-title { display: block; }
+
+            /* 隐藏桌面端导航内容 */
+            .nav-left-group .page-nav-tabs { display: none; }
+            .nav-left-group .commodity-pills { display: none; }
+
+            /* 导航栏简化 */
+            .top-navbar {
+                padding: 0 12px;
+                gap: 8px;
+            }
+            .nav-left-group {
+                gap: 8px;
+                min-width: 0;
+                flex: 1;
+            }
+
+            /* 主内容区适配 */
+            .main-container {
+                padding: 12px;
+                gap: 14px;
+            }
+            .dashboard-header {
+                flex-direction: column;
+                gap: 6px;
+            }
+            .title-group h1 {
+                font-size: 16px;
+            }
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            .kpi-card {
+                padding: 12px 14px;
+            }
+            .kpi-main-val {
+                font-size: 22px;
+            }
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+            .title-group h1 {
+                font-size: 14px;
+            }
+            .exchange-badge {
+                font-size: 10px;
+            }
+        }
     </style>
 </head>
 
 <body class="theme-dark">
 
+    <!-- 侧滑抽屉遮罩 -->
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+
+    <!-- 侧滑抽屉面板 -->
+    <nav class="drawer-panel" id="drawer-panel">
+        <div class="drawer-header">
+            <span class="drawer-header-title">📋 导航菜单</span>
+            <button class="drawer-close-btn" id="drawer-close" title="关闭菜单">✕</button>
+        </div>
+        <div class="drawer-section">
+            <div class="drawer-section-label">看板导航</div>
+            <a href="coking_coal_dragon_tiger.html" class="drawer-nav-link">
+                <span class="link-icon">📊</span> 席位龙虎榜
+            </a>
+            <a href="coking_coal_receipt.html" class="drawer-nav-link active">
+                <span class="link-icon">🏭</span> 仓单与库存
+            </a>
+            <a href="https://qushuxian.github.io/mongolian-coal-auction/" target="_blank" rel="noopener noreferrer" class="drawer-nav-link">
+                <span class="link-icon">🇲🇳</span> 蒙古国拍卖数据
+            </a>
+        </div>
+        <div class="drawer-section">
+            <div class="drawer-section-label">品种切换</div>
+            <div class="drawer-pills-grid" id="drawer-commodity-pills">
+                <!-- 动态生成 8 大品种胶囊 (抽屉版) -->
+            </div>
+        </div>
+    </nav>
+
     <!-- 顶部固定导航栏 -->
     <header class="top-navbar">
         <div class="nav-left-group">
+            <!-- 移动端汉堡按钮 -->
+            <button class="hamburger-btn" id="hamburger-btn" title="打开导航菜单">
+                <div class="hamburger-icon">
+                    <span></span><span></span><span></span>
+                </div>
+            </button>
+            <!-- 移动端页面标题 -->
+            <span class="mobile-page-title">🏭 仓单与库存</span>
+
             <!-- 核心隔离与互通：龙虎榜、仓单库存与蒙古国拍卖数据多向导航 -->
             <div class="page-nav-tabs">
                 <a href="coking_coal_dragon_tiger.html" class="page-tab-btn" title="直达期货各在交易合约主力席位成交持仓排名">📊 席位龙虎榜</a>
@@ -831,24 +1136,48 @@
             renderDashboard(currentCommodity);
         }
 
-        // 渲染品种胶囊
+        // 渲染品种胶囊 (桌面端顶栏 + 移动端抽屉双份同步)
         function renderCommodityPills() {
             const container = document.getElementById("commodity-pills");
+            const drawerContainer = document.getElementById("drawer-commodity-pills");
             container.innerHTML = "";
+            if (drawerContainer) drawerContainer.innerHTML = "";
             const commList = Object.keys(dataset.commodities);
+
+            function handlePillClick(code) {
+                if (currentCommodity === code) return;
+                currentCommodity = code;
+                // 同步高亮：顶栏胶囊
+                document.querySelectorAll(".comm-pill").forEach(el => el.classList.remove("active"));
+                document.querySelectorAll(`.comm-pill[data-code="${code}"]`).forEach(el => el.classList.add("active"));
+                // 同步高亮：抽屉胶囊
+                document.querySelectorAll(".drawer-comm-pill").forEach(el => el.classList.remove("active"));
+                document.querySelectorAll(`.drawer-comm-pill[data-code="${code}"]`).forEach(el => el.classList.add("active"));
+                renderDashboard(code);
+                // 移动端点击后自动关闭抽屉
+                closeDrawer();
+            }
+
             commList.forEach(code => {
                 const item = dataset.commodities[code];
+
+                // 桌面端顶栏胶囊
                 const btn = document.createElement("button");
                 btn.className = "comm-pill" + (code === currentCommodity ? " active" : "");
+                btn.setAttribute("data-code", code);
                 btn.innerHTML = `<span>${item.name}</span><span class="pill-tag">${code}</span>`;
-                btn.addEventListener("click", () => {
-                    if (currentCommodity === code) return;
-                    currentCommodity = code;
-                    document.querySelectorAll(".comm-pill").forEach(el => el.classList.remove("active"));
-                    btn.classList.add("active");
-                    renderDashboard(code);
-                });
+                btn.addEventListener("click", () => handlePillClick(code));
                 container.appendChild(btn);
+
+                // 移动端抽屉胶囊
+                if (drawerContainer) {
+                    const dbtn = document.createElement("button");
+                    dbtn.className = "drawer-comm-pill" + (code === currentCommodity ? " active" : "");
+                    dbtn.setAttribute("data-code", code);
+                    dbtn.innerHTML = `<span>${item.name}</span><span class="pill-code">${code}</span>`;
+                    dbtn.addEventListener("click", () => handlePillClick(code));
+                    drawerContainer.appendChild(dbtn);
+                }
             });
         }
 
@@ -1235,6 +1564,37 @@
                 if (comm) renderTrendChart(comm.history_trend || []);
             });
         }
+
+        // ====== 侧滑抽屉开关逻辑 ======
+        function openDrawer() {
+            const panel = document.getElementById('drawer-panel');
+            const backdrop = document.getElementById('drawer-backdrop');
+            const hamburger = document.getElementById('hamburger-btn');
+            if (panel) panel.classList.add('open');
+            if (backdrop) { backdrop.style.display = 'block'; requestAnimationFrame(() => backdrop.classList.add('visible')); }
+            if (hamburger) hamburger.classList.add('active');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        function closeDrawer() {
+            const panel = document.getElementById('drawer-panel');
+            const backdrop = document.getElementById('drawer-backdrop');
+            const hamburger = document.getElementById('hamburger-btn');
+            if (panel) panel.classList.remove('open');
+            if (backdrop) { backdrop.classList.remove('visible'); setTimeout(() => { backdrop.style.display = 'none'; }, 260); }
+            if (hamburger) hamburger.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        function initDrawer() {
+            const hamburger = document.getElementById('hamburger-btn');
+            const closeBtn = document.getElementById('drawer-close');
+            const backdrop = document.getElementById('drawer-backdrop');
+            if (hamburger) hamburger.addEventListener('click', openDrawer);
+            if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+            if (backdrop) backdrop.addEventListener('click', closeDrawer);
+            // ESC 键关闭
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+        }
+        initDrawer();
 
         // 深浅主题切换 (与龙虎榜共享 coking_coal_theme 状态与视觉图标)
         function initTheme() {

@@ -354,18 +354,46 @@ def get_commodity_candidates(prefix, current_date_str=None):
     return found
 
 def check_trade_day(date_str):
-    """验证指定日期是否是真实有数据的期货交易日"""
-    for probe_code in ["RB2610", "JM2609", "SA2609", "MA2609"]:
+    """验证指定日期是否是真实有数据的期货交易日 (动态推导主力与活跃挂牌月份，支持双通道容灾)"""
+    try:
+        base_dt = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+    except Exception:
+        base_dt = datetime.date.today()
+
+    # 动态推算目标日期起未来 6 个月的挂牌月份序列
+    dynamic_months = generate_future_contract_months(base_dt, num_months=6)
+    probe_codes = []
+    # 选取不同交易所最核心稳健的四大品种作为探测源 (RB:上期所, SA/MA:郑商所, JM:大商所)
+    for prefix in ["RB", "SA", "MA", "JM"]:
+        for ym in dynamic_months[:4]:
+            probe_codes.append(f"{prefix}{ym}")
+
+    # 主力合约（01/05/09 结尾）具备最高成交量与持仓持续性，优先排序排查
+    probe_codes.sort(key=lambda c: 0 if c[-2:] in ("01", "05", "09") else 1)
+
+    # 1. 首选通道：新浪财经官方镜像（前 6 个高概率活跃主力）
+    for probe_code in probe_codes[:6]:
         try:
             url = f"{BASE_URL}?t_breed={probe_code}&t_date={date_str}"
-            html = fetch_html(url, retries=1, timeout=8)
+            html = fetch_html(url, retries=1, timeout=6)
             soup = BeautifulSoup(html, "html.parser")
             tables = soup.find_all("table", class_="listT")
             if tables and len(tables[0].find_all("tr")) > 2:
                 return True
         except Exception:
             continue
+
+    # 2. 备用通道容灾：若新浪源未就绪或断流，通过东方财富数据中心探测
+    try:
+        em_probe = probe_codes[0] if probe_codes else "RB2701"
+        em_res = crawl_contract_positions_eastmoney(em_probe, date_str)
+        if em_res and (em_res.get("volume_ranking") or em_res.get("long_ranking")):
+            return True
+    except Exception:
+        pass
+
     return False
+
 
 def get_past_n_trade_dates(n=30, end_date=None):
     """从 end_date 倒推探测最近的 n 个有效期货交易日"""

@@ -1,6 +1,6 @@
 {
-  "sync_time": "2026-10-26 07:02:47",
-  "latest_trade_date": "2026-10-23",
+  "sync_time": "2026-10-26 07:17:33",
+  "latest_trade_date": "2026-10-26",
   "all_trade_dates": [
     "2026-06-15",
     "2026-06-16",
@@ -76,7 +76,8 @@
     "2026-10-20",
     "2026-10-21",
     "2026-10-22",
-    "2026-10-23"
+    "2026-10-23",
+    "2026-10-26"
   ],
   "commodities": {
     "JM": {
@@ -947,6 +948,17 @@
         },
         {
           "date": "2026-10-23",
+          "total_receipt": 500,
+          "diff": 0,
+          "forecast": 0,
+          "warehouse_receipt": 85,
+          "factory_receipt": 415,
+          "tonnage": 30000.0,
+          "warehouse_tonnage": 30000.0,
+          "factory_tonnage": 0.0
+        },
+        {
+          "date": "2026-10-26",
           "total_receipt": 500,
           "diff": 0,
           "forecast": 0,
@@ -1864,6 +1876,17 @@
           "tonnage": 50000.0,
           "warehouse_tonnage": 50000.0,
           "factory_tonnage": 0.0
+        },
+        {
+          "date": "2026-10-26",
+          "total_receipt": 500,
+          "diff": 0,
+          "forecast": 0,
+          "warehouse_receipt": 500,
+          "factory_receipt": 0,
+          "tonnage": 50000.0,
+          "warehouse_tonnage": 50000.0,
+          "factory_tonnage": 0.0
         }
       ]
     },
@@ -2704,6 +2727,17 @@
         },
         {
           "date": "2026-10-23",
+          "total_receipt": 500,
+          "diff": 0,
+          "forecast": 0,
+          "warehouse_receipt": 500,
+          "factory_receipt": 0,
+          "tonnage": 10000.0,
+          "warehouse_tonnage": 10000.0,
+          "factory_tonnage": 0.0
+        },
+        {
+          "date": "2026-10-26",
           "total_receipt": 500,
           "diff": 0,
           "forecast": 0,
@@ -3560,6 +3594,17 @@
           "tonnage": 10000.0,
           "warehouse_tonnage": 10000.0,
           "factory_tonnage": 0.0
+        },
+        {
+          "date": "2026-10-26",
+          "total_receipt": 500,
+          "diff": 0,
+          "forecast": 0,
+          "warehouse_receipt": 500,
+          "factory_receipt": 0,
+          "tonnage": 10000.0,
+          "warehouse_tonnage": 10000.0,
+          "factory_tonnage": 0.0
         }
       ]
     },
@@ -4408,6 +4453,17 @@
           "tonnage": 5000.0,
           "warehouse_tonnage": 5000.0,
           "factory_tonnage": 0.0
+        },
+        {
+          "date": "2026-10-26",
+          "total_receipt": 500,
+          "diff": 0,
+          "forecast": 0,
+          "warehouse_receipt": 500,
+          "factory_receipt": 0,
+          "tonnage": 5000.0,
+          "warehouse_tonnage": 5000.0,
+          "factory_tonnage": 0.0
         }
       ]
     },
@@ -4419,119 +4475,18 @@
       "unit": "手",
       "ton_per_hand": 10,
       "latest_summary": {
-        "total_receipt": 148982,
-        "last_total_receipt": 148982,
+        "total_receipt": 34425,
+        "last_total_receipt": 34425,
         "diff": 0,
         "forecast": 0,
-        "warehouse_receipt": 127382,
-        "factory_receipt": 21600,
-        "active_warehouses": 3,
-        "total_tonnage": 148982.0,
-        "warehouse_tonnage": 127382.0,
-        "factory_tonnage": 21600.0
+        "warehouse_receipt": 34425,
+        "factory_receipt": 0,
+        "active_warehouses": 0,
+        "total_tonnage": 34425.0,
+        "warehouse_tonnage": 34425.0,
+        "factory_tonnage": 0.0
       },
-      "latest_warehouses": [
-        {
-          "name": "惠龙港",
-          "is_factory": false,
-          "region": "江苏指定库",
-          "last_receipt": 106374,
-          "today_receipt": 106374,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 71.4
-        },
-        {
-          "name": "杭钢国贸",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 21600,
-          "today_receipt": 21600,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 14.5
-        },
-        {
-          "name": "中储南京",
-          "is_factory": false,
-          "region": "江苏指定库",
-          "last_receipt": 21008,
-          "today_receipt": 21008,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 14.1
-        },
-        {
-          "name": "鞍钢股份",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        },
-        {
-          "name": "沙钢集团",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        },
-        {
-          "name": "镔钢集团",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        },
-        {
-          "name": "河钢集团承钢",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        },
-        {
-          "name": "河钢集团邯钢",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        },
-        {
-          "name": "南钢股份",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        },
-        {
-          "name": "欧冶云商",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        }
-      ],
+      "latest_warehouses": [],
       "history_trend": [
         {
           "date": "2026-06-15",
@@ -5357,6 +5312,17 @@
           "tonnage": 148982.0,
           "warehouse_tonnage": 127382.0,
           "factory_tonnage": 21600.0
+        },
+        {
+          "date": "2026-10-26",
+          "total_receipt": 34425,
+          "diff": 0,
+          "forecast": 0,
+          "warehouse_receipt": 34425,
+          "factory_receipt": 0,
+          "tonnage": 34425.0,
+          "warehouse_tonnage": 34425.0,
+          "factory_tonnage": 0.0
         }
       ]
     },
@@ -5368,79 +5334,18 @@
       "unit": "手",
       "ton_per_hand": 20,
       "latest_summary": {
-        "total_receipt": 221257,
-        "last_total_receipt": 220361,
-        "diff": 896,
+        "total_receipt": 206338,
+        "last_total_receipt": 203054,
+        "diff": 3284,
         "forecast": 0,
-        "warehouse_receipt": 221257,
+        "warehouse_receipt": 206338,
         "factory_receipt": 0,
-        "active_warehouses": 3,
-        "total_tonnage": 221257.0,
-        "warehouse_tonnage": 221257.0,
+        "active_warehouses": 0,
+        "total_tonnage": 206338.0,
+        "warehouse_tonnage": 206338.0,
         "factory_tonnage": 0.0
       },
-      "latest_warehouses": [
-        {
-          "name": "中疆物流",
-          "is_factory": false,
-          "region": "新疆指定库",
-          "last_receipt": 96806,
-          "today_receipt": 97404,
-          "diff": 598,
-          "forecast": 0,
-          "share_pct": 44.02
-        },
-        {
-          "name": "炬申新疆",
-          "is_factory": false,
-          "region": "新疆指定库",
-          "last_receipt": 75037,
-          "today_receipt": 75335,
-          "diff": 298,
-          "forecast": 0,
-          "share_pct": 34.05
-        },
-        {
-          "name": "中物流乌鲁木齐",
-          "is_factory": false,
-          "region": "新疆指定库",
-          "last_receipt": 48518,
-          "today_receipt": 48518,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 21.93
-        },
-        {
-          "name": "中铝山东",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        },
-        {
-          "name": "山东宏拓",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        },
-        {
-          "name": "中州铝业",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        }
-      ],
+      "latest_warehouses": [],
       "history_trend": [
         {
           "date": "2026-06-15",
@@ -6266,6 +6171,17 @@
           "tonnage": 221257.0,
           "warehouse_tonnage": 221257.0,
           "factory_tonnage": 0.0
+        },
+        {
+          "date": "2026-10-26",
+          "total_receipt": 206338,
+          "diff": 3284,
+          "forecast": 0,
+          "warehouse_receipt": 206338,
+          "factory_receipt": 0,
+          "tonnage": 206338.0,
+          "warehouse_tonnage": 206338.0,
+          "factory_tonnage": 0.0
         }
       ]
     },
@@ -6277,89 +6193,18 @@
       "unit": "手",
       "ton_per_hand": 10,
       "latest_summary": {
-        "total_receipt": 141864,
-        "last_total_receipt": 142761,
-        "diff": -897,
+        "total_receipt": 220292,
+        "last_total_receipt": 223241,
+        "diff": -2949,
         "forecast": 0,
-        "warehouse_receipt": 111864,
-        "factory_receipt": 30000,
-        "active_warehouses": 6,
-        "total_tonnage": 141864.0,
-        "warehouse_tonnage": 111864.0,
-        "factory_tonnage": 30000.0
+        "warehouse_receipt": 220292,
+        "factory_receipt": 0,
+        "active_warehouses": 0,
+        "total_tonnage": 220292.0,
+        "warehouse_tonnage": 220292.0,
+        "factory_tonnage": 0.0
       },
-      "latest_warehouses": [
-        {
-          "name": "玖隆物流",
-          "is_factory": false,
-          "region": "江苏指定库",
-          "last_receipt": 55747,
-          "today_receipt": 54850,
-          "diff": -897,
-          "forecast": 0,
-          "share_pct": 38.66
-        },
-        {
-          "name": "中拓唐山",
-          "is_factory": false,
-          "region": "河北指定库",
-          "last_receipt": 54661,
-          "today_receipt": 54661,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 38.53
-        },
-        {
-          "name": "杭钢国贸",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 30000,
-          "today_receipt": 30000,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 21.15
-        },
-        {
-          "name": "惠龙港",
-          "is_factory": false,
-          "region": "江苏指定库",
-          "last_receipt": 1167,
-          "today_receipt": 1167,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.82
-        },
-        {
-          "name": "中储西安",
-          "is_factory": false,
-          "region": "陕西指定库",
-          "last_receipt": 597,
-          "today_receipt": 597,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.42
-        },
-        {
-          "name": "中拓湖州",
-          "is_factory": false,
-          "region": "浙江指定库",
-          "last_receipt": 589,
-          "today_receipt": 589,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.42
-        },
-        {
-          "name": "欧冶云商",
-          "is_factory": true,
-          "region": "厂库提货地",
-          "last_receipt": 0,
-          "today_receipt": 0,
-          "diff": 0,
-          "forecast": 0,
-          "share_pct": 0.0
-        }
-      ],
+      "latest_warehouses": [],
       "history_trend": [
         {
           "date": "2026-06-15",
@@ -7185,6 +7030,17 @@
           "tonnage": 141864.0,
           "warehouse_tonnage": 111864.0,
           "factory_tonnage": 30000.0
+        },
+        {
+          "date": "2026-10-26",
+          "total_receipt": 220292,
+          "diff": -2949,
+          "forecast": 0,
+          "warehouse_receipt": 220292,
+          "factory_receipt": 0,
+          "tonnage": 220292.0,
+          "warehouse_tonnage": 220292.0,
+          "factory_tonnage": 0.0
         }
       ]
     }

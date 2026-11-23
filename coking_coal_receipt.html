@@ -1094,7 +1094,7 @@
     </main>
 
     <footer>
-        大商所 / 郑商所 / 上期所 期货仓单与交割库存自动化监控大屏 · 数据更新后自动归档至 data/receipt_daily/ · 支持纯静态离线双击打开
+        大商所 / 郑商所 / 上期所 期货仓单与交割库存自动化监控大屏 · 数据持久化于 SQLite (data/coking_coal.db) · 支持纯静态离线双击打开
     </footer>
 
     <script>
@@ -1112,16 +1112,19 @@
             initEventHandlers();
         });
 
-        // 尝试拉取或使用离线垫片
+        // 优先使用离线垫片保障 file:// 毫秒级打开；HTTP 环境下尝试拉取最新 JSON 覆盖刷新
         async function loadData() {
-            if (!dataset) {
+            if (window.location.protocol !== "file:" || !dataset) {
                 try {
-                    const res = await fetch("./data/coking_coal_receipts.json?_t=" + Date.now());
+                    const res = await fetch("./data/coking_coal_receipts.json?_t=" + Date.now(), { cache: "no-store" });
                     if (res.ok) {
-                        dataset = await res.json();
+                        const fresh = await res.json();
+                        if (fresh && fresh.commodities) {
+                            dataset = fresh;
+                        }
                     }
                 } catch (e) {
-                    console.warn("无法从网络异步加载 JSON，继续尝试使用垫片");
+                    console.warn("无法从网络异步加载 JSON，使用离线垫片数据");
                 }
             }
 
@@ -1228,10 +1231,6 @@
                     const facName = isSHFE ? "厂库提货地" : "厂库";
                     document.getElementById("kpi-wh-qty").textContent = `仓库: ${whQty.toLocaleString()} ${comm.unit}`;
                     document.getElementById("kpi-fac-qty").textContent = `${facName}: ${facQty.toLocaleString()} ${comm.unit}`;
-                } else if (facQty > 0) {
-                    splitEl.style.display = "flex";
-                    document.getElementById("kpi-wh-qty").textContent = `仓库: ${whQty.toLocaleString()} 手`;
-                    document.getElementById("kpi-fac-qty").textContent = `厂库: ${facQty.toLocaleString()} 手`;
                 } else {
                     splitEl.style.display = "none";
                 }
@@ -1263,8 +1262,12 @@
             }
 
             document.getElementById("kpi-forecast-val").textContent = forecast.toLocaleString();
-            document.getElementById("kpi-active-wh").textContent = (comm.latest_warehouses || []).length;
-            const topWh = (comm.latest_warehouses && comm.latest_warehouses.length > 0) ? comm.latest_warehouses[0].name : "--";
+            const isDCE = comm.exchange && (comm.exchange.includes("大商所") || comm.exchange.includes("DCE"));
+            const activeWhCount = sm.active_warehouses != null ? sm.active_warehouses : (comm.latest_warehouses || []).length;
+            document.getElementById("kpi-active-wh").textContent = isDCE && (comm.latest_warehouses || []).length === 0 ? "--" : activeWhCount;
+            const topWh = (comm.latest_warehouses && comm.latest_warehouses.length > 0)
+                ? comm.latest_warehouses[0].name
+                : (isDCE ? "受官网反爬限制暂未直连明细" : (total === 0 ? "当前仓单清零" : "--"));
             document.getElementById("kpi-top-wh").textContent = topWh;
 
             // 3. 渲染左侧趋势折线+柱状图
@@ -1306,10 +1309,17 @@
             const totals = history.map(d => d.total_receipt);
             const diffs = history.map(d => d.diff);
 
-            // 计算极值
-            const minTot = Math.floor(Math.min(...totals) * 0.95);
-            const maxTot = Math.ceil(Math.max(...totals) * 1.05);
+            // 计算极值并避免全零或单点时除以零 NaN
+            const rawMin = Math.min(...totals);
+            const rawMax = Math.max(...totals);
+            const minTot = Math.max(0, Math.floor(rawMin * 0.95));
+            let maxTot = Math.ceil(rawMax * 1.05);
+            if (maxTot <= minTot) {
+                maxTot = minTot + 10;
+            }
+            const totSpan = maxTot - minTot;
             const maxDiffAbs = Math.max(Math.max(...diffs.map(Math.abs)), 10);
+            const getX = (i) => history.length === 1 ? padL + plotW / 2 : padL + (i / (history.length - 1)) * plotW;
 
             // 坐标轴背景网格线
             ctx.strokeStyle = document.body.classList.contains("theme-light") ? "#E5E7EB" : "#374151";
@@ -1320,7 +1330,7 @@
                 ctx.moveTo(padL, y);
                 ctx.lineTo(w - padR, y);
                 // 绘制左侧刻度
-                const val = Math.round(maxTot - ((maxTot - minTot) / 4) * i);
+                const val = Math.round(maxTot - (totSpan / 4) * i);
                 ctx.fillStyle = document.body.classList.contains("theme-light") ? "#6B7280" : "#9CA3AF";
                 ctx.font = "10px -apple-system, sans-serif";
                 ctx.textAlign = "right";
@@ -1330,18 +1340,18 @@
 
             // 绘制横轴日期刻度
             ctx.textAlign = "center";
-            const step = Math.ceil(history.length / 6);
+            const step = Math.max(1, Math.ceil(history.length / 6));
             for (let i = 0; i < history.length; i += step) {
-                const x = padL + (i / (history.length - 1)) * plotW;
+                const x = getX(i);
                 const dStr = dates[i].substring(5); // MM-DD
                 ctx.fillText(dStr, x, h - 15);
             }
 
             // 1. 绘制日度变动柱状图 (在背景层，避免遮挡折线)
-            const barW = Math.max(3, (plotW / history.length) * 0.5);
-            const zeroY = padT + (plotH / 2); // 零线在中央或根据绝对值定
+            const barW = Math.max(3, (plotW / Math.max(1, history.length)) * 0.5);
+            const zeroY = padT + (plotH / 2); // 零线在中央
             diffs.forEach((df, i) => {
-                const x = padL + (i / (history.length - 1)) * plotW - barW / 2;
+                const x = getX(i) - barW / 2;
                 const barH = (Math.abs(df) / maxDiffAbs) * (plotH * 0.4);
                 if (df > 0) {
                     ctx.fillStyle = "rgba(239, 68, 68, 0.4)";
@@ -1354,10 +1364,15 @@
 
             // 2. 绘制总仓单面积与折线
             const points = totals.map((tot, i) => {
-                const x = padL + (i / (history.length - 1)) * plotW;
-                const y = padT + plotH - ((tot - minTot) / (maxTot - minTot)) * plotH;
+                const x = getX(i);
+                const y = padT + plotH - ((tot - minTot) / totSpan) * plotH;
                 return { x, y, tot, date: dates[i], diff: diffs[i] };
             });
+
+            if (points.length === 0) {
+                canvas._points = [];
+                return;
+            }
 
             // 渐变面积阴影
             const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
@@ -1419,14 +1434,15 @@
             });
 
             if (closest && minDist < 30) {
+                const unitStr = (dataset && dataset.commodities && dataset.commodities[currentCommodity] && dataset.commodities[currentCommodity].unit) || "手";
                 tooltip.style.display = "block";
-                tooltip.style.left = `${closest.x + 10}px`;
-                tooltip.style.top = `${closest.y - 45}px`;
-                const diffBadge = closest.diff > 0 ? `<span style="color:#EF4444;">+${closest.diff}</span>` : (closest.diff < 0 ? `<span style="color:#10B981;">${closest.diff}</span>` : `<span style="color:#9CA3AF;">0</span>`);
+                tooltip.style.left = `${Math.min(closest.x + 10, rect.width - 170)}px`;
+                tooltip.style.top = `${Math.max(8, closest.y - 45)}px`;
+                const diffBadge = closest.diff > 0 ? `<span style="color:#EF4444;">+${closest.diff.toLocaleString()}</span>` : (closest.diff < 0 ? `<span style="color:#10B981;">${closest.diff.toLocaleString()}</span>` : `<span style="color:#9CA3AF;">0</span>`);
                 tooltip.innerHTML = `
                     <div style="font-weight:700; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px; margin-bottom:4px;">📅 ${closest.date}</div>
-                    <div>仓单总量: <strong>${closest.tot.toLocaleString()}</strong> 手</div>
-                    <div>较上日变动: ${diffBadge} 手</div>
+                    <div>仓单总量: <strong>${closest.tot.toLocaleString()}</strong> ${unitStr}</div>
+                    <div>较上日变动: ${diffBadge} ${unitStr}</div>
                 `;
             } else {
                 tooltip.style.display = "none";
@@ -1437,12 +1453,27 @@
             tooltip.style.display = "none";
         });
 
+        function getEmptyWarehouseHint(comm) {
+            if (!comm) return "暂无指定交割仓库数据";
+            const isDCE = comm.exchange && (comm.exchange.includes("大商所") || comm.exchange.includes("DCE"));
+            if (isDCE) {
+                return "大商所 (JM/J) 交割仓库明细受官网反爬策略限制暂不可直连，为避免失真已停止比例估算，当前仅展示真实总量与趋势";
+            }
+            const total = (comm.latest_summary && comm.latest_summary.total_receipt) || 0;
+            const fc = (comm.latest_summary && comm.latest_summary.forecast) || 0;
+            if (total === 0 && fc === 0) {
+                return `最新交易日 (${dataset.latest_trade_date || '--'}) 该品种注册仓单与有效预报均为 0`;
+            }
+            return "暂无指定交割仓库明细";
+        }
+
         // 渲染右侧指定仓库进度条
         function renderWarehouseProgress(warehouses, total) {
             const list = document.getElementById("wh-progress-list");
             list.innerHTML = "";
             if (!warehouses || warehouses.length === 0) {
-                list.innerHTML = `<div style="color:var(--text-muted); padding:20px; text-align:center;">暂无指定交割仓库数据</div>`;
+                const comm = dataset && dataset.commodities ? dataset.commodities[currentCommodity] : null;
+                list.innerHTML = `<div style="color:var(--text-muted); padding:24px 16px; text-align:center; font-size:12.5px; line-height:1.6;">${getEmptyWarehouseHint(comm)}</div>`;
                 return;
             }
 
@@ -1499,7 +1530,9 @@
             });
 
             if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted);">未找到符合条件的交割仓库记录</td></tr>`;
+                const comm = dataset && dataset.commodities ? dataset.commodities[currentCommodity] : null;
+                const msg = searchKeyword.trim() ? "未找到符合搜索条件的交割仓库记录" : getEmptyWarehouseHint(comm);
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted);">${msg}</td></tr>`;
                 return;
             }
 

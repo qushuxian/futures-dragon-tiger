@@ -2,35 +2,37 @@
 # -*- coding: utf-8 -*-
 """
 大商所/郑商所/上期所 8 大核心期货品种仓单日报自动化采集与预处理系统
-真实权威交割仓库明细引擎：
+------------------------------------------------------------------
+数据源策略（100% 真实披露数据，严禁跨年错配与伪造比例）：
 1. 郑商所（SA 纯碱、FG 玻璃、MA 甲醇）：
-   - 直连郑商所官方 DFS 报表，精准提取每一个指定交割库与厂库分库的真实仓单量、当日增减变动与官方有效预报！
-   - 彻底解决小计行归属问题，将有效预报（如纯碱 SA 1558手：中远海运693、河北中储451、中储天津400、衡水棉麻14）精准穿透映射至对应交割仓库。
-2. 大商所（JM 焦煤、J 焦炭）：
-   - 直连大商所官方披露的真实交割仓库明细与权威镜像，
-     真实反映焦煤 586 手（海南浩通 476手/-860手、中铝内蒙迁安 100手/0手、博金煤业 10手/-28手，活跃库3家）；
-     焦炭 1416 手（物产中大日照港 683手、曹妃甸 410手、天津精海泰 176手、浙江汇善 60手、天津港 48手/-19手、中铝迁安 39手，活跃库6家）。
-3. 上期所（RB 螺纹钢、HC 热轧卷板、AO 氧化铝）：
-   - 直连上期所官方 dailydata 仓单数据流，精准提取惠龙港、广州港物流、中储南京、玖隆物流、中疆物流、炬申新疆等全部指定交割库真实持仓明细。
-4. 全量指标与图表自洽校验：
-   - 活跃交割仓库数 (Active Warehouses)
-   - 指定交割仓库/港口仓单分布 (Chart)
-   - 各交割仓库当日注册仓单明细 (Table)
-   确保三张图表的数据与交易所官方披露 100% 吻合！
+   - 直连郑商所官方 DFS 每日仓单 Excel 报表 (FutureDataWhsheet.xlsx)，
+     基于表头列名动态映射（兼容甲醇“完税+保税”双列与玻璃无“有效预报”列），
+     精确提取真实注册仓单、当日增减、有效预报与各仓库/厂库明细。
+2. 上期所（RB 螺纹钢、HC 热轧卷板、AO 氧化铝）：
+   - 直连上期所官方每日仓单 HTML 页面 (dailystock_{YYYYMMDD}/ZH/shfe/{prod}.html)，
+     完整解析带 rowspan/colspan 的仓库与厂库提货地表，按吨汇总仓库仓单与厂库仓单。
+3. 大商所（JM 焦煤、J 焦炭）及全品种总量补充：
+   - 以东方财富数据中心 RPT_FUTU_STOCKDATA 为首选总量通道，99期货网 stockIn 为历史回溯与备用通道。
+   - 因大商所官网启用瑞数动态反爬校验，暂不模拟突破反爬，亦不再使用固定比例伪造仓库明细，
+     对大商所品种仅展示全市场真实注册仓单总量及增减。
+4. 自愈状态机：
+   - 取消 500 假数据兜底；若当日部分交易所尚未出数，标记为 PARTIAL，确保下次定时任务自动增量补齐。
 """
 
 import os
 import sys
+import io
+import re
 import json
 import time
 import datetime
 import argparse
-import urllib.request
-import urllib.parse
-import io
-import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, List, Any, Optional, Tuple
+
 import requests
 import pandas as pd
+from bs4 import BeautifulSoup
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
@@ -40,21 +42,28 @@ if CURRENT_DIR not in sys.path:
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-SCRIPT_DIR = PROJECT_ROOT
 RECEIPT_DAILY_DIR = os.path.join(DATA_DIR, "receipt_daily")
-DRAGON_TIGER_DAILY_DIR = os.path.join(DATA_DIR, "daily")
 JSON_OUTPUT_PATH = os.path.join(DATA_DIR, "coking_coal_receipts.json")
 JS_OUTPUT_PATH = os.path.join(DATA_DIR, "coking_coal_receipts.data.js")
 
-# 8 大核心品种元数据定义
-COMMODITY_META = {
+HTTP_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+}
+
+# 8 大核心品种元数据定义（仓单口径）
+COMMODITY_META: Dict[str, Dict[str, Any]] = {
     "JM": {
         "name": "焦煤",
         "code": "JM",
         "desc": "Coking Coal",
         "exchange": "大连商品交易所 (DCE)",
         "unit": "手",
-        "ton_per_hand": 60
+        "ton_per_hand": 60,
+        "99qh_pid": 75,
     },
     "J": {
         "name": "焦炭",
@@ -62,7 +71,8 @@ COMMODITY_META = {
         "desc": "Coke",
         "exchange": "大连商品交易所 (DCE)",
         "unit": "手",
-        "ton_per_hand": 100
+        "ton_per_hand": 100,
+        "99qh_pid": 74,
     },
     "SA": {
         "name": "纯碱",
@@ -70,7 +80,8 @@ COMMODITY_META = {
         "desc": "Soda Ash",
         "exchange": "郑州商品交易所 (CZCE)",
         "unit": "手",
-        "ton_per_hand": 20
+        "ton_per_hand": 20,
+        "99qh_pid": 57,
     },
     "FG": {
         "name": "玻璃",
@@ -78,7 +89,8 @@ COMMODITY_META = {
         "desc": "Glass",
         "exchange": "郑州商品交易所 (CZCE)",
         "unit": "手",
-        "ton_per_hand": 20
+        "ton_per_hand": 20,
+        "99qh_pid": 50,
     },
     "MA": {
         "name": "甲醇",
@@ -86,7 +98,8 @@ COMMODITY_META = {
         "desc": "Methanol",
         "exchange": "郑州商品交易所 (CZCE)",
         "unit": "手",
-        "ton_per_hand": 10
+        "ton_per_hand": 10,
+        "99qh_pid": 49,
     },
     "RB": {
         "name": "螺纹钢",
@@ -94,7 +107,9 @@ COMMODITY_META = {
         "desc": "Rebar",
         "exchange": "上海期货交易所 (SHFE)",
         "unit": "吨",
-        "ton_per_hand": 1
+        "ton_per_hand": 1,
+        "99qh_pid": 11,
+        "shfe_prod": "rb",
     },
     "AO": {
         "name": "氧化铝",
@@ -102,7 +117,9 @@ COMMODITY_META = {
         "desc": "Alumina",
         "exchange": "上海期货交易所 (SHFE)",
         "unit": "吨",
-        "ton_per_hand": 1
+        "ton_per_hand": 1,
+        "99qh_pid": 8,
+        "shfe_prod": "ao",
     },
     "HC": {
         "name": "热轧卷板",
@@ -110,97 +127,168 @@ COMMODITY_META = {
         "desc": "Hot Rolled Coil",
         "exchange": "上海期货交易所 (SHFE)",
         "unit": "吨",
-        "ton_per_hand": 1
-    }
+        "ton_per_hand": 1,
+        "99qh_pid": 13,
+        "shfe_prod": "hc",
+    },
 }
 
-# 大商所焦煤 (JM) 与焦炭 (J) 官方真实交割仓库基准与历史演进快照
-DCE_BENCHMARK_WAREHOUSES = {
-    "JM": [
-        {"name": "海南浩通", "ratio": 0.8123, "fixed_diff_ratio": 0.9685},
-        {"name": "中铝内蒙（迁安）", "ratio": 0.1706, "fixed_diff_ratio": 0.0},
-        {"name": "博金煤业", "ratio": 0.0171, "fixed_diff_ratio": 0.0315}
-    ],
-    "J": [
-        {"name": "物产中大（日照港）", "ratio": 0.4823, "fixed_diff_ratio": 0.0},
-        {"name": "物产中大（曹妃甸港集团）", "ratio": 0.2895, "fixed_diff_ratio": 0.0},
-        {"name": "天津精海泰（青岛港）", "ratio": 0.1243, "fixed_diff_ratio": 0.0},
-        {"name": "浙江汇善（青岛港）", "ratio": 0.0424, "fixed_diff_ratio": 0.0},
-        {"name": "天津港焦炭码头", "ratio": 0.0339, "fixed_diff_ratio": 1.0},
-        {"name": "中铝内蒙（迁安）", "ratio": 0.0276, "fixed_diff_ratio": 0.0}
-    ]
-}
+CITY_TO_PROVINCE = [
+    ("青岛", "山东"), ("日照", "山东"), ("董家口", "山东"), ("淄博", "山东"), ("潍坊", "山东"), ("滕州", "山东"), ("黄岛", "山东"), ("胶州", "山东"), ("市北", "山东"),
+    ("曹妃甸", "河北"), ("沙河", "河北"), ("唐山", "河北"), ("石家庄", "河北"), ("藁城", "河北"), ("高邑", "河北"), ("衡水", "河北"), ("迁安", "河北"), ("邯郸", "河北"), ("承德", "河北"),
+    ("太仓", "江苏"), ("常州", "江苏"), ("南通", "江苏"), ("江阴", "江苏"), ("张家港", "江苏"), ("连云港", "江苏"), ("无锡", "江苏"), ("南京", "江苏"), ("苏州", "江苏"), ("常熟", "江苏"), ("镇江", "江苏"),
+    ("宁波", "浙江"), ("湖州", "浙江"), ("嘉兴", "浙江"), ("杭州", "浙江"),
+    ("佛山", "广东"), ("东莞", "广东"), ("广州", "广东"), ("南沙", "广东"),
+    ("钦州", "广西"), ("防城港", "广西"), ("柳州", "广西"),
+    ("乌鲁木齐", "新疆"), ("头屯河", "新疆"), ("中疆", "新疆"), ("炬申新疆", "新疆"),
+    ("安阳", "河南"), ("三门峡", "河南"), ("洛阳", "河南"), ("郑州", "河南"), ("濮阳", "河南"),
+    ("介休", "山西"), ("交口", "山西"),
+    ("荆州", "湖北"), ("武汉", "湖北"), ("洪湖", "湖北"),
+    ("西安", "陕西"),
+    ("塘沽", "天津"), ("滨海", "天津"),
+    ("上港", "上海"), ("张华浜", "上海"),
+    ("嘉峪关", "甘肃"), ("兰州", "甘肃"), ("甘肃", "甘肃"),
+]
 
-def infer_warehouse_region_and_type(wh_name):
-    """根据交割仓库全称动态推断其所属区域与类型"""
+PROVINCES = [
+    "山东", "河北", "江苏", "河南", "山西", "安徽", "湖北", "广东",
+    "广西", "内蒙古", "新疆", "浙江", "上海", "天津", "辽宁", "四川",
+    "陕西", "甘肃", "北京", "重庆", "福建", "江西", "云南", "贵州",
+]
+
+
+def safe_int(val: Any) -> int:
+    """安全将数字、浮点或带逗号字符串转换为整数"""
+    if val is None:
+        return 0
+    try:
+        if pd.isna(val):
+            return 0
+    except Exception:
+        pass
+    if isinstance(val, (int,)):
+        return int(val)
+    if isinstance(val, float):
+        return int(round(val))
+    s = str(val).strip().replace(",", "")
+    if not s or s in ("-", "--", "nan", "None"):
+        return 0
+    try:
+        return int(round(float(s)))
+    except ValueError:
+        cleaned = re.sub(r"[^\d\-+.]", "", s)
+        if not cleaned or cleaned in ("-", "+"):
+            return 0
+        try:
+            return int(round(float(cleaned)))
+        except ValueError:
+            return 0
+
+
+def infer_warehouse_region_and_type(
+    wh_name: str,
+    explicit_region: Optional[str] = None,
+    is_factory: bool = False,
+) -> str:
+    """
+    根据显式地区、物理地名关键词及库型生成标准化区域标签。
+    城市/港口关键词优先于企业前缀省份，避免如“浙江汇善（青岛港）”误判为浙江。
+    """
     wh_clean = str(wh_name).strip()
+    province = (explicit_region or "").strip()
 
-    province = ""
-    provinces = ["山东", "河北", "江苏", "河南", "山西", "安徽", "湖北", "广东", "内蒙古", "新疆", "浙江", "上海", "天津", "辽宁", "四川", "陕西", "北京", "重庆"]
-    for p in provinces:
-        if p in wh_clean:
-            province = p
-            break
+    if province == "厂库提货地":
+        return "厂库提货地"
 
     if not province:
-        if any(k in wh_clean for k in ["曹妃甸", "沙河", "唐山", "石家庄", "藁城", "高邑", "衡水", "迁安"]):
-            province = "河北"
-        elif any(k in wh_clean for k in ["日照", "青岛", "董家口", "淄博", "潍坊", "滕州"]):
-            province = "山东"
-        elif any(k in wh_clean for k in ["太仓", "常州", "南通", "江阴", "张家港", "连云港", "无锡", "南京"]):
-            province = "江苏"
-        elif any(k in wh_clean for k in ["介休", "交口"]):
-            province = "山西"
-        elif any(k in wh_clean for k in ["荆州", "武汉", "洪湖"]):
-            province = "湖北"
-        elif any(k in wh_clean for k in ["东莞", "广州"]):
-            province = "广东"
-        elif any(k in wh_clean for k in ["安阳", "三门峡", "金大地"]):
-            province = "河南"
-        elif any(k in wh_clean for k in ["乌鲁木齐", "中疆", "炬申"]):
-            province = "新疆"
-        elif any(k in wh_clean for k in ["湖州", "杭钢", "杭实"]):
-            province = "浙江"
+        for city, prov in CITY_TO_PROVINCE:
+            if city in wh_clean:
+                province = prov
+                break
 
-    is_port = any(k in wh_clean for k in ["港", "曹妃甸", "董家口", "保税", "储运", "物流", "码头", "海铁", "海运"])
-    is_factory = any(k in wh_clean for k in ["厂库", "实业", "化工", "铝业", "钢铁", "新材", "集团", "股份", "有限", "焦化", "希望", "能源", "建材", "中玻", "金晶", "煤业", "浩通", "国贸"])
+    if not province:
+        for prov in PROVINCES:
+            if prov in wh_clean:
+                province = prov
+                break
 
+    if is_factory:
+        return f"{province}厂库" if province else "厂库提货地"
+
+    is_port = any(k in wh_clean for k in ["港", "曹妃甸", "董家口", "码头", "海铁", "海运"])
     if is_port:
-        return f"{province}港口" if province else "港口物流库"
-    elif is_factory:
-        return f"{province}厂库" if province else "产业厂库"
-    elif province:
+        return f"{province}港口" if province else "港口指定库"
+    if province:
         return f"{province}指定库"
-    else:
-        return "指定交割库"
+    return "指定交割库"
 
-def ensure_dirs():
+
+def ensure_dirs() -> None:
     os.makedirs(RECEIPT_DAILY_DIR, exist_ok=True)
     os.makedirs(os.path.dirname(JSON_OUTPUT_PATH), exist_ok=True)
 
-def get_trading_days_from_positions():
-    """获取与龙虎榜完全一致的交易日列表"""
-    if not os.path.exists(DRAGON_TIGER_DAILY_DIR):
-        return []
-    files = sorted([f for f in os.listdir(DRAGON_TIGER_DAILY_DIR) if f.endswith(".json") and re.match(r"^\d{4}-\d{2}-\d{2}\.json$", f)])
-    return [f.replace(".json", "") for f in files]
 
-def fetch_eastmoney_real_totals(symbols=None, page_size=40):
+def http_get_with_retry(
+    url: str,
+    params: Optional[Dict[str, Any]] = None,
+    headers: Optional[Dict[str, str]] = None,
+    timeout: float = 10.0,
+    retries: int = 2,
+) -> Optional[requests.Response]:
+    """带重试机制的 HTTP GET 封装"""
+    hdrs = headers or HTTP_HEADERS
+    for attempt in range(retries + 1):
+        try:
+            resp = requests.get(url, params=params, headers=hdrs, timeout=timeout)
+            if resp.status_code == 200:
+                return resp
+            if resp.status_code == 404:
+                return None
+        except Exception:
+            pass
+        if attempt < retries:
+            time.sleep(0.4 * (attempt + 1))
+    return None
+
+
+def get_known_trading_dates_from_db() -> List[str]:
+    """从 SQLite 数据库读取已知交易日（交易日历、龙虎榜及已归档仓单日期并集）"""
+    try:
+        from db_manager import get_db_connection
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT trade_date FROM trade_calendar WHERE is_trading_day = 1
+            UNION
+            SELECT DISTINCT trade_date FROM contract_metrics
+            UNION
+            SELECT DISTINCT trade_date FROM receipt_summaries
+            ORDER BY trade_date ASC;
+        """)
+        dates = [r["trade_date"] for r in cur.fetchall() if r["trade_date"]]
+        conn.close()
+        return dates
+    except Exception:
+        return []
+
+
+def fetch_eastmoney_real_totals(
+    symbols: Optional[List[str]] = None,
+    page_size: int = 200,
+) -> Tuple[Dict[str, Dict[str, Dict[str, int]]], Dict[str, str]]:
     """
-    从东方财富数据中心 RPT_FUTU_STOCKDATA 接口抓取全部品种每日真实权威仓单总量及增减变动
-    返回格式: { trade_date: { symbol: { 'receipt': int, 'diff': int } } }
+    从东方财富数据中心 RPT_FUTU_STOCKDATA 拉取各品种历史仓单总量与当日增减。
+    返回: (date_sym_map, latest_date_by_sym)
     """
     if not symbols:
         symbols = list(COMMODITY_META.keys())
-    
-    url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-        "Accept": "*/*"
-    }
 
-    date_sym_map = {}
-    print("🌐 [官方镜像引擎] 正在向权威数据源拉取 8 大期货品种历史仓单时序数据...")
+    url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+    headers = {**HTTP_HEADERS, "Accept": "*/*", "Referer": "https://data.eastmoney.com/"}
+
+    date_sym_map: Dict[str, Dict[str, Dict[str, int]]] = {}
+    latest_date_by_sym: Dict[str, str] = {}
+    print("🌐 [东财总量通道] 正在拉取 8 大期货品种官方仓单时序基准...")
 
     for sym in symbols:
         params = {
@@ -214,410 +302,534 @@ def fetch_eastmoney_real_totals(symbols=None, page_size=40):
             "source": "WEB",
             "client": "WEB",
         }
+        resp = http_get_with_retry(url, params=params, headers=headers, timeout=10.0, retries=2)
+        if not resp:
+            print(f"  ⚠️ 东财拉取 {sym} 无响应")
+            continue
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=10)
-            res_json = r.json()
-            rows = res_json.get("result", {}).get("data", [])
+            res_json = resp.json()
+            rows = (res_json.get("result") or {}).get("data") or []
             for row in rows:
-                t_date = row.get("TRADE_DATE", "")[:10]
+                t_date = str(row.get("TRADE_DATE") or "")[:10]
                 if not t_date:
                     continue
-                receipt_val = int(row.get("ON_WARRANT_NUM") or 0)
-                diff_val = int(row.get("ADDCHANGE") or 0)
-                if t_date not in date_sym_map:
-                    date_sym_map[t_date] = {}
-                date_sym_map[t_date][sym] = {
+                receipt_val = safe_int(row.get("ON_WARRANT_NUM"))
+                diff_val = safe_int(row.get("ADDCHANGE"))
+                date_sym_map.setdefault(t_date, {})[sym] = {
                     "receipt": receipt_val,
-                    "diff": diff_val
+                    "diff": diff_val,
+                    "source": "eastmoney",
                 }
-            time.sleep(0.04)
+                if sym not in latest_date_by_sym or t_date > latest_date_by_sym[sym]:
+                    latest_date_by_sym[sym] = t_date
+            time.sleep(0.03)
         except Exception as e:
-            print(f"⚠️ 拉取品种 {sym} 真实时序异常: {e}")
+            print(f"  ⚠️ 解析东财 {sym} 数据异常: {e}")
 
-    return date_sym_map
+    return date_sym_map, latest_date_by_sym
 
-def fetch_czce_official_details(trade_date):
+
+def fetch_99qh_real_totals(
+    symbols: Optional[List[str]] = None,
+    min_date: str = "2026-06-01",
+) -> Tuple[Dict[str, Dict[str, Dict[str, int]]], Dict[str, str]]:
     """
-    直连郑州商品交易所官方 DFS 服务，下载并解析每日仓单 Excel 表报
-    通过准确解析仓库小计汇总行，精准提取纯碱 (SA)、玻璃 (FG)、甲醇 (MA) 
-    真实交割仓库明细、真实仓单数量、当日增减与官方有效预报（彻底解决预报遗漏问题）
+    从 99 期货网 stockIn 页面提取日度仓单总量序列（支持东财 65 天窗口之外的历史回补及备通道）。
+    返回: (date_sym_map, latest_date_by_sym)
+    """
+    if not symbols:
+        symbols = list(COMMODITY_META.keys())
+
+    date_sym_map: Dict[str, Dict[str, Dict[str, int]]] = {}
+    latest_date_by_sym: Dict[str, str] = {}
+    print("🌐 [99期货补充通道] 正在拉取历史仓单总量与回溯序列...")
+
+    for sym in symbols:
+        pid = COMMODITY_META.get(sym, {}).get("99qh_pid")
+        if not pid:
+            continue
+        url = f"https://www.99qh.com/data/stockIn?productId={pid}"
+        resp = http_get_with_retry(url, timeout=10.0, retries=1)
+        if not resp:
+            continue
+        try:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            nd = soup.find("script", id="__NEXT_DATA__")
+            if not nd or not nd.string:
+                continue
+            pp = json.loads(nd.string).get("props", {}).get("pageProps", {}).get("data", {})
+
+            # 1. 提取近期表格中的精确日增减 stockChange
+            change_map: Dict[str, int] = {}
+            tbl_list = (pp.get("positionTrendTableListData") or {}).get("list") or []
+            for item in tbl_list:
+                d_str = str(item.get("date") or "")[:10]
+                if d_str and item.get("stockChange") is not None:
+                    change_map[d_str] = safe_int(item.get("stockChange"))
+
+            # 2. 提取完整日度仓单序列 [date, close, stock]
+            chart_list = (pp.get("positionTrendChartListData") or {}).get("list") or []
+            parsed_points: List[Tuple[str, int]] = []
+            for pt in chart_list:
+                if not isinstance(pt, (list, tuple)) or len(pt) < 3:
+                    continue
+                d_str = str(pt[0] or "")[:10]
+                if not re.match(r"^\d{4}-\d{2}-\d{2}$", d_str):
+                    continue
+                parsed_points.append((d_str, safe_int(pt[2])))
+
+            # 升序排列以便在缺乏 stockChange 时基于上一已知日计算差分
+            parsed_points.sort(key=lambda x: x[0])
+            prev_val: Optional[int] = None
+            for d_str, qty in parsed_points:
+                diff_val = change_map[d_str] if d_str in change_map else (qty - prev_val if prev_val is not None else 0)
+                prev_val = qty
+                if d_str < min_date:
+                    continue
+                date_sym_map.setdefault(d_str, {})[sym] = {
+                    "receipt": qty,
+                    "diff": diff_val,
+                    "source": "99qh",
+                }
+                if sym not in latest_date_by_sym or d_str > latest_date_by_sym[sym]:
+                    latest_date_by_sym[sym] = d_str
+        except Exception as e:
+            print(f"  ⚠️ 解析 99期货 {sym} 异常: {e}")
+
+    return date_sym_map, latest_date_by_sym
+
+
+def _resolve_czce_columns(header_row: List[Any]) -> Dict[str, Any]:
+    """根据郑商所 Excel 区块表头动态定位各列索引（兼容完税/保税双列及无预报列）"""
+    col_code = 0
+    col_name = 1
+    qty_cols: List[int] = []
+    col_diff: Optional[int] = None
+    col_forecast: Optional[int] = None
+
+    for idx, cell in enumerate(header_row):
+        title = str(cell).strip() if pd.notna(cell) else ""
+        if not title:
+            continue
+        if "仓库编号" in title:
+            col_code = idx
+        elif "仓库简称" in title:
+            col_name = idx
+        elif "仓单数量" in title:
+            qty_cols.append(idx)
+        elif "当日增减" in title or "增减" in title:
+            col_diff = idx
+        elif "有效预报" in title or "预报" in title:
+            col_forecast = idx
+
+    return {
+        "code": col_code,
+        "name": col_name,
+        "qty_cols": qty_cols,
+        "diff": col_diff,
+        "forecast": col_forecast,
+    }
+
+
+def fetch_czce_official_details(trade_date: str) -> Optional[Dict[str, Any]]:
+    """
+    直连郑商所官方 DFS 服务下载并解析当日仓单 Excel (FutureDataWhsheet.xlsx)。
+    严格只请求 trade_date 对应年份与日期，严禁跨年回退。
     """
     date_clean = trade_date.replace("-", "")
     year = date_clean[:4]
-    candidates = []
-    if year == "2026":
-        candidates.append(("2024", "2024" + date_clean[4:]))
-    candidates.append((year, date_clean))
+    url = f"http://www.czce.com.cn/cn/DFSStaticFiles/Future/{year}/{date_clean}/FutureDataWhsheet.xlsx"
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-    }
-    df = None
-    for y_cand, d_cand in candidates:
-        url = f"http://www.czce.com.cn/cn/DFSStaticFiles/Future/{y_cand}/{d_cand}/FutureDataWhsheet.xlsx"
-        try:
-            r = requests.get(url, headers=headers, timeout=1.5)
-            if r.status_code == 200:
-                df = pd.read_excel(io.BytesIO(r.content))
-                break
-        except:
-            pass
-    if df is None:
+    resp = http_get_with_retry(url, timeout=10.0, retries=2)
+    if not resp:
         return None
+
     try:
-        results = {}
+        df = pd.read_excel(io.BytesIO(resp.content), engine="openpyxl")
+    except ImportError as e:
+        print(f"  ❌ 缺少 openpyxl 依赖，无法解析郑商所 Excel: {e}")
+        return None
+    except Exception:
+        return None
+
+    try:
+        results: Dict[str, Any] = {}
         target_list = [("纯碱", "SA"), ("玻璃", "FG"), ("甲醇", "MA")]
 
         for comm_name, code in target_list:
             start_idx = None
             for idx, r_row in df.iterrows():
-                f_val = str(r_row.iloc[0])
+                f_val = str(r_row.iloc[0]) if pd.notna(r_row.iloc[0]) else ""
                 if code in f_val and (comm_name in f_val or "品种" in f_val):
                     start_idx = idx
                     break
-            if start_idx is None:
+            if start_idx is None or start_idx + 1 >= len(df):
                 continue
 
-            cur_wh_name = None
-            warehouses = []
+            cols_map = _resolve_czce_columns(list(df.iloc[start_idx + 1].values))
+            if not cols_map["qty_cols"]:
+                continue
+
+            cur_wh_name: Optional[str] = None
+            warehouses: List[Dict[str, Any]] = []
             tot_qty = 0
             tot_diff = 0
             tot_forecast = 0
+            has_total = False
 
-            for off in range(2, 160):
-                if start_idx + off >= len(df):
-                    break
-                r_val = df.iloc[start_idx + off].values
+            for row_idx in range(start_idx + 2, len(df)):
+                r_val = df.iloc[row_idx].values
                 first_str = str(r_val[0]).strip() if pd.notna(r_val[0]) else ""
-                if "品种" in first_str and off > 2:
+
+                if "品种" in first_str:
                     break
+
                 if first_str == "总计":
-                    nums = [int(x) for x in r_val if pd.notna(x) and str(x).lstrip("-").isdigit()]
-                    if len(nums) >= 2:
-                        tot_qty = nums[0]
-                        tot_diff = nums[1]
-                    if len(nums) >= 3:
-                        tot_forecast = nums[2]
+                    tot_qty = sum(safe_int(r_val[c]) for c in cols_map["qty_cols"])
+                    tot_diff = safe_int(r_val[cols_map["diff"]]) if cols_map["diff"] is not None else 0
+                    tot_forecast = safe_int(r_val[cols_map["forecast"]]) if cols_map["forecast"] is not None else 0
+                    has_total = True
                     break
 
-                # 识别新仓库编号
-                if first_str.isdigit() and len(first_str) == 4 and pd.notna(r_val[1]):
-                    cur_wh_name = str(r_val[1]).strip()
+                code_cell = str(r_val[cols_map["code"]]).strip() if pd.notna(r_val[cols_map["code"]]) else ""
+                if code_cell.isdigit() and len(code_cell) == 4 and pd.notna(r_val[cols_map["name"]]):
+                    cur_wh_name = str(r_val[cols_map["name"]]).strip()
 
-                # 小计行包含该仓库最终的完税/保税仓单、当日增减与有效预报
                 if first_str == "小计" and cur_wh_name:
-                    nums = [int(x) for x in r_val if pd.notna(x) and str(x).lstrip("-").isdigit()]
-                    if len(nums) >= 2:
-                        qty = nums[0]
-                        diff = nums[1]
-                        fc = nums[2] if len(nums) >= 3 else 0
-                        # 凡有今日仓单、或有当日变动、或有有效预报的交割库全部归入活跃仓库
-                        if qty > 0 or diff != 0 or fc > 0:
-                            warehouses.append({
-                                "name": cur_wh_name,
-                                "today_receipt": qty,
-                                "diff": diff,
-                                "forecast": fc,
-                                "last_receipt": qty - diff
-                            })
+                    qty = sum(safe_int(r_val[c]) for c in cols_map["qty_cols"])
+                    diff = safe_int(r_val[cols_map["diff"]]) if cols_map["diff"] is not None else 0
+                    fc = safe_int(r_val[cols_map["forecast"]]) if cols_map["forecast"] is not None else 0
+                    if qty > 0 or diff != 0 or fc > 0:
+                        is_fac = "厂库" in cur_wh_name
+                        warehouses.append({
+                            "name": cur_wh_name,
+                            "is_factory": is_fac,
+                            "region": infer_warehouse_region_and_type(cur_wh_name, is_factory=is_fac),
+                            "today_receipt": qty,
+                            "diff": diff,
+                            "forecast": fc,
+                            "last_receipt": qty - diff,
+                        })
 
-            results[code] = {
-                "total_receipt": tot_qty,
-                "diff": tot_diff,
-                "forecast": tot_forecast,
-                "warehouses": warehouses
-            }
+            if has_total:
+                results[code] = {
+                    "total_receipt": tot_qty,
+                    "diff": tot_diff,
+                    "forecast": tot_forecast,
+                    "warehouses": warehouses,
+                }
         return results
-    except Exception as e:
+    except Exception:
         return None
 
-def fetch_shfe_official_details(trade_date):
+
+def _expand_html_table(table: Any) -> List[List[str]]:
     """
-    直连上海期货交易所官方日度仓单数据流，
-    全量解析并统计指定交割仓库 (WHTYPE=1) 与 厂库提货地 (WHTYPE=2) 的全部真实持仓与增减变动！
+    展开带 rowspan 与 colspan 的 HTML 表格为规整的二维字符串矩阵。
+    确保上期所按地区或厂库合并单元格后的每行都能对齐表头列索引。
+    """
+    grid: Dict[Tuple[int, int], str] = {}
+    max_cols = 0
+    rows = table.find_all("tr")
+
+    for r_idx, tr in enumerate(rows):
+        c_idx = 0
+        cells = tr.find_all(["td", "th"])
+        for cell in cells:
+            while (r_idx, c_idx) in grid:
+                c_idx += 1
+            text = cell.get_text(strip=True)
+            rowspan = max(1, safe_int(cell.get("rowspan") or 1))
+            colspan = max(1, safe_int(cell.get("colspan") or 1))
+            for dr in range(rowspan):
+                for dc in range(colspan):
+                    grid[(r_idx + dr, c_idx + dc)] = text
+            c_idx += colspan
+            max_cols = max(max_cols, c_idx)
+
+    matrix: List[List[str]] = []
+    for r_idx in range(len(rows)):
+        row_vals = [grid.get((r_idx, c_idx), "") for c_idx in range(max_cols)]
+        if any(v for v in row_vals):
+            matrix.append(row_vals)
+    return matrix
+
+
+def _parse_shfe_stock_table(table: Any, is_factory_table: bool) -> Tuple[int, int, List[Dict[str, Any]]]:
+    """解析单张上期所仓单表格（仓库表或厂库表）"""
+    matrix = _expand_html_table(table)
+    if not matrix:
+        return 0, 0, []
+
+    header = matrix[0]
+    reg_col: Optional[int] = None
+    wh_col: Optional[int] = None
+    qty_col: Optional[int] = None
+    diff_col: Optional[int] = None
+
+    for idx, h in enumerate(header):
+        if "地区" in h:
+            reg_col = idx
+        elif "仓库" in h or "厂库" in h:
+            wh_col = idx
+        elif "期货" in h:
+            qty_col = idx
+        elif "增减" in h:
+            diff_col = idx
+
+    if wh_col is None or qty_col is None:
+        return 0, 0, []
+
+    raw_items: List[Dict[str, Any]] = []
+    total_qty: Optional[int] = None
+    total_diff: int = 0
+    last_subtotal_qty: Optional[int] = None
+    last_subtotal_diff: int = 0
+
+    for row in matrix[1:]:
+        row_joined = "".join(row)
+        if "单位：" in row_joined or "(仓库)" in row_joined or "(厂库)" in row_joined:
+            continue
+
+        c0 = row[0].strip() if row else ""
+        wh_raw = row[wh_col].strip() if wh_col < len(row) else ""
+        reg_raw = row[reg_col].strip() if (reg_col is not None and reg_col < len(row)) else ""
+        qty = safe_int(row[qty_col]) if qty_col < len(row) else 0
+        diff = safe_int(row[diff_col]) if (diff_col is not None and diff_col < len(row)) else 0
+
+        if c0 == "总计" or wh_raw == "总计" or reg_raw == "总计":
+            total_qty = qty
+            total_diff = diff
+            continue
+
+        if c0 == "合计" or wh_raw == "合计" or reg_raw == "合计":
+            last_subtotal_qty = qty
+            last_subtotal_diff = diff
+            continue
+
+        if not wh_raw:
+            continue
+
+        raw_items.append({
+            "wh_raw": wh_raw,
+            "reg_raw": reg_raw,
+            "qty": qty,
+            "diff": diff,
+        })
+
+    # 检查同一名称是否跨地区重复出现（例如氧化铝厂库“四邦实业”同时存在于甘肃、新疆）
+    name_counts: Dict[str, int] = {}
+    for it in raw_items:
+        name_counts[it["wh_raw"]] = name_counts.get(it["wh_raw"], 0) + 1
+
+    warehouses: List[Dict[str, Any]] = []
+    sum_qty = 0
+    sum_diff = 0
+    for it in raw_items:
+        qty = it["qty"]
+        diff = it["diff"]
+        sum_qty += qty
+        sum_diff += diff
+        if qty == 0 and diff == 0:
+            continue
+        wh_name = it["wh_raw"]
+        reg_raw = it["reg_raw"]
+        if name_counts.get(wh_name, 0) > 1 and reg_raw and reg_raw != "厂库提货地":
+            wh_name = f"{wh_name}（{reg_raw}）"
+        warehouses.append({
+            "name": wh_name,
+            "is_factory": is_factory_table,
+            "region": infer_warehouse_region_and_type(wh_name, explicit_region=reg_raw, is_factory=is_factory_table),
+            "today_receipt": qty,
+            "diff": diff,
+            "forecast": 0,
+            "last_receipt": qty - diff,
+            "tonnage": qty,
+        })
+
+    if total_qty is None:
+        # 螺纹钢/热卷厂库表末尾仅含“合计”行时，以实际累加值或末行合计为准
+        total_qty = sum_qty if raw_items else (last_subtotal_qty or 0)
+        total_diff = sum_diff if raw_items else last_subtotal_diff
+
+    return total_qty, total_diff, warehouses
+
+
+def fetch_shfe_official_details(trade_date: str) -> Optional[Dict[str, Any]]:
+    """
+    直连上期所官方日度仓单 HTML 页面 (dailystock_{YYYYMMDD}/ZH/shfe/{prod}.html)，
+    严格匹配 trade_date 对应日期，不跨年回退。
     """
     date_clean = trade_date.replace("-", "")
-    candidates = ["2025" + date_clean[4:], date_clean, "2024" + date_clean[4:]]
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-        "Referer": "https://www.shfe.com.cn/"
-    }
-    for d in candidates:
-        url = f"https://www.shfe.com.cn/data/tradedata/future/dailydata/{d}dailystock.dat"
+    headers = {**HTTP_HEADERS, "Referer": "https://www.shfe.com.cn/reports/tradedata/dailyandweeklydata/"}
+    res: Dict[str, Any] = {}
+
+    for code in ["RB", "HC", "AO"]:
+        prod = COMMODITY_META[code]["shfe_prod"]
+        url = f"https://www.shfe.com.cn/data/tradedata/future/stockdata/dailystock_{date_clean}/ZH/shfe/{prod}.html"
+        resp = http_get_with_retry(url, headers=headers, timeout=10.0, retries=2)
+        if not resp:
+            continue
+
         try:
-            r = requests.get(url, headers=headers, timeout=1.5)
-            if r.status_code == 200:
-                data = r.json()
-                items = data.get("o_cursor", [])
-                if items:
-                    res = {}
-                    for code, target_name, ton_ratio in [("RB", "螺纹钢", 10), ("HC", "热轧卷板", 10), ("AO", "氧化铝", 30)]:
-                        sub = [x for x in items if target_name in x.get("VARNAME", "") or code.lower() == x.get("VARID", "").lower()]
-                        warehouses = []
-                        wh_tot_qty = 0
-                        wh_tot_diff = 0
-                        fac_tot_qty = 0
-                        fac_tot_diff = 0
+            html_txt = resp.content.decode("utf-8", errors="ignore")
+            soup = BeautifulSoup(html_txt, "html.parser")
+            tables = soup.find_all("table")
+            if len(tables) < 2:
+                continue
 
-                        for r_item in sub:
-                            whtype = str(r_item.get("WHTYPE", "")).strip() # '1': 仓库, '2': 厂库/提货地
-                            reg = r_item.get("REGNAME", "").split("$")[0].strip()
-                            wh = r_item.get("WHABBRNAME", "").split("$")[0].strip()
-                            qty = int(r_item.get("WRTWGHTS") or 0)
-                            diff = int(r_item.get("WRTCHANGE") or 0)
+            wh_tot_qty, wh_tot_diff, wh_list = _parse_shfe_stock_table(tables[1], is_factory_table=False)
+            fac_tot_qty, fac_tot_diff, fac_list = (0, 0, [])
+            if len(tables) >= 3:
+                fac_tot_qty, fac_tot_diff, fac_list = _parse_shfe_stock_table(tables[2], is_factory_table=True)
 
-                            # 抓取仓库总计
-                            if whtype == "1" and ("总计" in wh or "总计" in reg):
-                                wh_tot_qty = qty
-                                wh_tot_diff = diff
-                                continue
+            total_tonnage = wh_tot_qty + fac_tot_qty
+            total_diff_tonnage = wh_tot_diff + fac_tot_diff
+            warehouses = wh_list + fac_list
 
-                            # 抓取厂库提货地合计/总计
-                            if whtype == "2" and ("合计" in wh or "总计" in wh):
-                                fac_tot_qty = qty
-                                fac_tot_diff = diff
-                                continue
+            res[code] = {
+                "total_receipt": total_tonnage,
+                "total_tonnage": total_tonnage,
+                "diff": total_diff_tonnage,
+                "forecast": 0,
+                "warehouse_receipt": wh_tot_qty,
+                "factory_receipt": fac_tot_qty,
+                "warehouse_tonnage": wh_tot_qty,
+                "factory_tonnage": fac_tot_qty,
+                "warehouses": warehouses,
+            }
+        except Exception:
+            continue
 
-                            if not wh or "计" in wh or "总" in wh:
-                                continue
+    return res if res else None
 
-                            is_factory = (whtype == "2") or ("厂库" in reg) or ("厂库" in str(r_item.get("VARNAME", "")))
-                            region_str = "厂库提货地" if is_factory else (f"{reg}指定库" if reg else "指定交割库")
 
-                            if qty > 0 or diff != 0 or is_factory:
-                                warehouses.append({
-                                    "name": wh,
-                                    "is_factory": is_factory,
-                                    "region": region_str,
-                                    "today_receipt": qty,
-                                    "diff": diff,
-                                    "forecast": 0,
-                                    "last_receipt": qty - diff,
-                                    "tonnage": qty
-                                })
+def fetch_exchange_details_for_date(trade_date: str) -> Tuple[str, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """拉取单个交易日的郑商所 + 上期所官方明细（供并发调度）"""
+    czce_details = fetch_czce_official_details(trade_date)
+    shfe_details = fetch_shfe_official_details(trade_date)
+    return trade_date, czce_details, shfe_details
 
-                        total_tonnage = wh_tot_qty + fac_tot_qty
-                        total_diff_tonnage = wh_tot_diff + fac_tot_diff
 
-                        for w in warehouses:
-                            w["share_pct"] = round((w["today_receipt"] / total_tonnage * 100) if total_tonnage > 0 else 0, 2)
-
-                        # 排序：今日仓单降序，厂库有仓单优先
-                        warehouses.sort(key=lambda x: (x["today_receipt"], x["is_factory"]), reverse=True)
-
-                        res[code] = {
-                            "total_receipt": total_tonnage,
-                            "total_tonnage": total_tonnage,
-                            "diff": total_diff_tonnage,
-                            "forecast": 0,
-                            "warehouse_receipt": wh_tot_qty,
-                            "factory_receipt": fac_tot_qty,
-                            "warehouse_tonnage": wh_tot_qty,
-                            "factory_tonnage": fac_tot_qty,
-                            "active_warehouses": len([w for w in warehouses if w["today_receipt"] > 0 or abs(w["diff"]) > 0]),
-                            "warehouses": warehouses
-                        }
-                    return res
-        except:
-            pass
-    return None
-
-def assemble_daily_snapshot(trade_date, real_totals_map, prev_snapshot=None):
+def assemble_daily_snapshot(
+    trade_date: str,
+    em_totals_map: Dict[str, Dict[str, Dict[str, int]]],
+    em_latest_by_sym: Dict[str, str],
+    qh_totals_map: Dict[str, Dict[str, Dict[str, int]]],
+    qh_latest_by_sym: Dict[str, str],
+    czce_details: Optional[Dict[str, Any]],
+    shfe_details: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
     """
-    全景自洽装配单日仓单快照，确保三大交易所全部品种交割仓库、仓单分布、活跃仓库数 100% 真实客观
+    严格基于真实数据装配单日仓单快照，彻底消除 500 兜底与固定比例伪造。
     """
-    snapshot = {
+    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    snapshot: Dict[str, Any] = {
         "trade_date": trade_date,
         "sync_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "commodities": {}
+        "commodities": {},
     }
 
-    # 1. 郑商所官方 Excel 原生解析
-    czce_details = fetch_czce_official_details(trade_date)
-
-    # 2. 上期所官方 dat 原生解析（涵盖仓库与厂库提货地）
-    shfe_details = fetch_shfe_official_details(trade_date)
+    j_published = (
+        "J" in em_totals_map.get(trade_date, {})
+        or "J" in qh_totals_map.get(trade_date, {})
+    )
 
     for comm_code, meta in COMMODITY_META.items():
-        # 获取该品种在当日的权威官方总量与增减
-        real_stat = real_totals_map.get(trade_date, {}).get(comm_code)
-        if real_stat:
-            official_today = real_stat["receipt"]
-            official_diff = real_stat["diff"]
-        else:
-            prev_comm = prev_snapshot.get("commodities", {}).get(comm_code) if prev_snapshot else None
-            official_today = prev_comm["summary"]["total_receipt"] if prev_comm else 500
-            official_diff = 0
+        em_stat = em_totals_map.get(trade_date, {}).get(comm_code)
+        qh_stat = qh_totals_map.get(trade_date, {}).get(comm_code)
+        base_stat = em_stat or qh_stat
 
-        official_last = official_today - official_diff
+        max_known_date = max(
+            em_latest_by_sym.get(comm_code, ""),
+            qh_latest_by_sym.get(comm_code, ""),
+        )
+
+        official_today = base_stat["receipt"] if base_stat else 0
+        official_diff = base_stat["diff"] if base_stat else 0
         official_forecast = 0
         official_wh_qty = official_today
         official_fac_qty = 0
-        official_total_tonnage = official_today * meta["ton_per_hand"]
-        official_wh_tonnage = official_wh_qty * meta["ton_per_hand"]
-        official_fac_tonnage = official_fac_qty * meta["ton_per_hand"]
-        warehouses = []
+        warehouses: List[Dict[str, Any]] = []
+        sync_status = "PARTIAL"
 
-        # 路径 A: 郑商所品种优先直连官方 Excel 明细
-        if comm_code in ["SA", "FG", "MA"] and czce_details and comm_code in czce_details:
-            czce_data = czce_details[comm_code]
-            if czce_data.get("warehouses"):
-                official_forecast = czce_data.get("forecast", 0)
-                if czce_data.get("total_receipt", 0) > 0:
-                    official_today = czce_data["total_receipt"]
-                    official_diff = czce_data["diff"]
-                    official_last = official_today - official_diff
-
-                for w in czce_data["warehouses"]:
-                    region = infer_warehouse_region_and_type(w["name"])
-                    is_fac = "厂库" in w["name"] or "厂库" in region
-                    warehouses.append({
-                        "name": w["name"],
-                        "is_factory": is_fac,
-                        "region": region,
-                        "last_receipt": w["last_receipt"],
-                        "today_receipt": w["today_receipt"],
-                        "diff": w["diff"],
-                        "forecast": w["forecast"]
-                    })
+        # 路径 A: 郑商所 (SA, FG, MA) — 官方 Excel 为权威
+        if comm_code in ("SA", "FG", "MA"):
+            if czce_details and comm_code in czce_details:
+                cz = czce_details[comm_code]
+                official_today = cz["total_receipt"]
+                official_diff = cz["diff"]
+                official_forecast = cz.get("forecast", 0)
+                warehouses = [dict(w) for w in cz.get("warehouses", [])]
                 official_fac_qty = sum(w["today_receipt"] for w in warehouses if w.get("is_factory"))
-                official_wh_qty = official_today - official_fac_qty
-
-        # 路径 B: 大商所焦煤 (JM) 与焦炭 (J) 官方真实仓库映射
-        elif comm_code in ["JM", "J"]:
-            # 特别核准焦煤在标杆日期的真实交割仓库明细
-            if comm_code == "JM" and trade_date in ["2026-09-16", "2026-09-17"]:
-                warehouses = [
-                    {"name": "海南浩通", "is_factory": True, "region": "产业厂库", "last_receipt": 1336 if trade_date == "2026-09-16" else 476, "today_receipt": 476, "diff": -860 if trade_date == "2026-09-16" else 0, "forecast": 0},
-                    {"name": "中铝内蒙（迁安）", "is_factory": True, "region": "河北厂库", "last_receipt": 100, "today_receipt": 100, "diff": 0, "forecast": 0},
-                    {"name": "博金煤业", "is_factory": True, "region": "产业厂库", "last_receipt": 38 if trade_date == "2026-09-16" else 10, "today_receipt": 10, "diff": -28 if trade_date == "2026-09-16" else 0, "forecast": 0}
-                ]
-                official_fac_qty = 586
-                official_wh_qty = 0
-            elif comm_code == "J" and trade_date in ["2026-09-16", "2026-09-17"]:
-                warehouses = [
-                    {"name": "物产中大（日照港）", "is_factory": False, "region": "山东港口", "last_receipt": 683, "today_receipt": 683, "diff": 0, "forecast": 0},
-                    {"name": "物产中大（曹妃甸港集团）", "is_factory": False, "region": "河北港口", "last_receipt": 410, "today_receipt": 410, "diff": 0, "forecast": 0},
-                    {"name": "天津精海泰（青岛港）", "is_factory": False, "region": "山东港口", "last_receipt": 176, "today_receipt": 176, "diff": 0, "forecast": 0},
-                    {"name": "浙江汇善（青岛港）", "is_factory": False, "region": "山东港口", "last_receipt": 60, "today_receipt": 60, "diff": 0, "forecast": 0},
-                    {"name": "天津港焦炭码头", "is_factory": False, "region": "天津港口", "last_receipt": 67 if trade_date == "2026-09-16" else 48, "today_receipt": 48, "diff": -19 if trade_date == "2026-09-16" else 0, "forecast": 0},
-                    {"name": "中铝内蒙（迁安）", "is_factory": True, "region": "河北厂库", "last_receipt": 39, "today_receipt": 39, "diff": 0, "forecast": 0}
-                ]
-                official_wh_qty = 1377
-                official_fac_qty = 39
+                official_wh_qty = max(0, official_today - official_fac_qty)
+                sync_status = "SUCCESS" if (official_today > 0 or official_forecast > 0 or len(warehouses) > 0) else "EMPTY_MARKET"
+            elif base_stat is not None:
+                # 仅拿到总量，缺官网 Excel 仓库明细 -> 标记 PARTIAL 以便后续重抓补全
+                sync_status = "PARTIAL"
             else:
-                wh_cfgs = DCE_BENCHMARK_WAREHOUSES.get(comm_code, [])
-                allocated_today = 0
-                allocated_diff = 0
-                for idx, cfg in enumerate(wh_cfgs):
-                    wh_name = cfg["name"]
-                    region = infer_warehouse_region_and_type(wh_name)
-                    ratio = cfg["ratio"]
-                    diff_ratio = cfg.get("fixed_diff_ratio", ratio)
+                sync_status = "PARTIAL"
 
-                    if idx == len(wh_cfgs) - 1:
-                        wh_today = official_today - allocated_today
-                        wh_diff = official_diff - allocated_diff
-                    else:
-                        wh_today = int(round(official_today * ratio))
-                        wh_diff = int(round(official_diff * diff_ratio))
-                        allocated_today += wh_today
-                        allocated_diff += wh_diff
+        # 路径 B: 上期所 (RB, HC, AO) — 官方 HTML 为权威（含仓库 + 厂库提货地）
+        elif comm_code in ("RB", "HC", "AO"):
+            if shfe_details and comm_code in shfe_details:
+                sh = shfe_details[comm_code]
+                official_today = sh["total_receipt"]
+                official_diff = sh["diff"]
+                official_wh_qty = sh["warehouse_receipt"]
+                official_fac_qty = sh["factory_receipt"]
+                warehouses = [dict(w) for w in sh.get("warehouses", [])]
+                sync_status = "SUCCESS" if (official_today > 0 or len(warehouses) > 0) else "EMPTY_MARKET"
+            elif base_stat is not None:
+                sync_status = "PARTIAL"
+            else:
+                sync_status = "PARTIAL"
 
-                    wh_last = wh_today - wh_diff
-                    is_fac = "厂库" in wh_name or "厂库" in region
-                    warehouses.append({
-                        "name": wh_name,
-                        "is_factory": is_fac,
-                        "region": region,
-                        "last_receipt": wh_last,
-                        "today_receipt": wh_today,
-                        "diff": wh_diff,
-                        "forecast": 0
-                    })
-                official_fac_qty = sum(w["today_receipt"] for w in warehouses if w.get("is_factory"))
-                official_wh_qty = official_today - official_fac_qty
+        # 路径 C: 大商所 (JM, J) — 真实总量与增减（无官网明细时不伪造比例拆分）
+        elif comm_code in ("JM", "J"):
+            if base_stat is not None:
+                sync_status = "SUCCESS" if official_today > 0 else "EMPTY_MARKET"
+            elif max_known_date and trade_date < max_known_date:
+                # 东财与 99 期货在焦煤连续 0 仓单期间会省略空行，已知后续日期已出数则确认当日真实为 0
+                official_today = 0
+                official_diff = 0
+                official_wh_qty = 0
+                sync_status = "EMPTY_MARKET"
+            elif comm_code == "JM" and trade_date < today_str and j_published:
+                official_today = 0
+                official_diff = 0
+                official_wh_qty = 0
+                sync_status = "EMPTY_MARKET"
+            else:
+                # 今日尚未轮到该品种披露：记为 PARTIAL，等待下一次定时任务刷新
+                official_today = 0
+                official_diff = 0
+                official_wh_qty = 0
+                sync_status = "PARTIAL"
 
-        # 路径 C: 上期所品种 (RB, HC, AO) 优先直连官方 dat 明细（涵盖仓库与厂库提货地，以吨为单位）
-        elif comm_code in ["RB", "HC", "AO"]:
-            if comm_code == "AO" and trade_date in ["2026-09-16", "2026-09-17"]:
-                # 官方权威公布真实仓单（氧化铝 AO）：
-                # 今日（2026-09-17）：仓库仓单 272,699 吨（减少 1,496 吨），厂库仓单 8,100 吨（减少 1,200 吨），合计 280,799 吨（减少 2,696 吨）
-                if trade_date == "2026-09-17":
-                    official_total_tonnage = 280799
-                    official_wh_tonnage = 272699
-                    official_fac_tonnage = 8100
-                    official_today = 280799
-                    official_diff = -2696
-                    official_last = 283495
-                    official_wh_qty = 272699
-                    official_fac_qty = 8100
-                    warehouses = [
-                        {"name": "中疆物流", "is_factory": False, "region": "新疆指定库", "last_receipt": 156200, "today_receipt": 154704, "diff": -1496, "forecast": 0, "tonnage": 154704},
-                        {"name": "中物流乌鲁木齐", "is_factory": False, "region": "新疆指定库", "last_receipt": 78500, "today_receipt": 78500, "diff": 0, "forecast": 0, "tonnage": 78500},
-                        {"name": "炬申新疆", "is_factory": False, "region": "新疆指定库", "last_receipt": 39495, "today_receipt": 39495, "diff": 0, "forecast": 0, "tonnage": 39495},
-                        {"name": "中铝山东", "is_factory": True, "region": "厂库提货地", "last_receipt": 9300, "today_receipt": 8100, "diff": -1200, "forecast": 0, "tonnage": 8100},
-                        {"name": "山东宏拓", "is_factory": True, "region": "厂库提货地", "last_receipt": 0, "today_receipt": 0, "diff": 0, "forecast": 0, "tonnage": 0},
-                        {"name": "中州铝业", "is_factory": True, "region": "厂库提货地", "last_receipt": 0, "today_receipt": 0, "diff": 0, "forecast": 0, "tonnage": 0}
-                    ]
-                else:
-                    official_total_tonnage = 283495
-                    official_wh_tonnage = 274195
-                    official_fac_tonnage = 9300
-                    official_today = 283495
-                    official_diff = 0
-                    official_last = 283495
-                    official_wh_qty = 274195
-                    official_fac_qty = 9300
-                    warehouses = [
-                        {"name": "中疆物流", "is_factory": False, "region": "新疆指定库", "last_receipt": 156200, "today_receipt": 156200, "diff": 0, "forecast": 0, "tonnage": 156200},
-                        {"name": "中物流乌鲁木齐", "is_factory": False, "region": "新疆指定库", "last_receipt": 78500, "today_receipt": 78500, "diff": 0, "forecast": 0, "tonnage": 78500},
-                        {"name": "炬申新疆", "is_factory": False, "region": "新疆指定库", "last_receipt": 39495, "today_receipt": 39495, "diff": 0, "forecast": 0, "tonnage": 39495},
-                        {"name": "中铝山东", "is_factory": True, "region": "厂库提货地", "last_receipt": 9300, "today_receipt": 9300, "diff": 0, "forecast": 0, "tonnage": 9300},
-                        {"name": "山东宏拓", "is_factory": True, "region": "厂库提货地", "last_receipt": 0, "today_receipt": 0, "diff": 0, "forecast": 0, "tonnage": 0},
-                        {"name": "中州铝业", "is_factory": True, "region": "厂库提货地", "last_receipt": 0, "today_receipt": 0, "diff": 0, "forecast": 0, "tonnage": 0}
-                    ]
-            elif shfe_details and comm_code in shfe_details:
-                shfe_data = shfe_details[comm_code]
-                if shfe_data.get("warehouses"):
-                    official_today = shfe_data["total_receipt"]
-                    official_diff = shfe_data["diff"]
-                    official_last = official_today - official_diff
-                    official_wh_qty = shfe_data.get("warehouse_receipt", official_today)
-                    official_fac_qty = shfe_data.get("factory_receipt", 0)
-                    official_total_tonnage = shfe_data.get("total_tonnage", official_today)
-                    official_wh_tonnage = shfe_data.get("warehouse_tonnage", official_wh_qty)
-                    official_fac_tonnage = shfe_data.get("factory_tonnage", official_fac_qty)
+        official_last = official_today - official_diff
+        tph = meta["ton_per_hand"]
+        official_total_tonnage = float(official_today * tph)
+        official_wh_tonnage = float(official_wh_qty * tph)
+        official_fac_tonnage = float(official_fac_qty * tph)
 
-                    for w in shfe_data["warehouses"]:
-                        warehouses.append({
-                            "name": w["name"],
-                            "is_factory": w.get("is_factory", False),
-                            "region": w["region"],
-                            "last_receipt": w["last_receipt"],
-                            "today_receipt": w["today_receipt"],
-                            "diff": w["diff"],
-                            "forecast": 0,
-                            "tonnage": w.get("tonnage", w["today_receipt"])
-                        })
-
-        # 计算各仓库市场占比份额
         tot_today_actual = sum(w["today_receipt"] for w in warehouses) or official_today
         for w in warehouses:
-            w["share_pct"] = round((w["today_receipt"] / tot_today_actual * 100) if tot_today_actual > 0 else 0, 2)
+            w["share_pct"] = round((w["today_receipt"] / tot_today_actual * 100) if tot_today_actual > 0 else 0.0, 2)
 
-        # 按今日仓单降序排列（若今日仓单为0则按有效预报降序）
-        warehouses.sort(key=lambda x: (x["today_receipt"], x.get("forecast", 0)), reverse=True)
-
-        # 活跃交割仓库数：今日有仓单、有变动、或有预报的仓库总数
-        active_count = len([w for w in warehouses if w["today_receipt"] > 0 or abs(w.get("diff", 0)) > 0 or w.get("forecast", 0) > 0])
+        warehouses.sort(key=lambda x: (x["today_receipt"], x.get("forecast", 0), abs(x.get("diff", 0))), reverse=True)
+        active_count = len([
+            w for w in warehouses
+            if w["today_receipt"] > 0 or abs(w.get("diff", 0)) > 0 or w.get("forecast", 0) > 0
+        ])
 
         snapshot["commodities"][comm_code] = {
             "code": comm_code,
             "name": meta["name"],
             "exchange": meta["exchange"],
             "unit": meta["unit"],
-            "ton_per_hand": meta["ton_per_hand"],
+            "ton_per_hand": tph,
+            "sync_status": sync_status,
             "summary": {
                 "total_receipt": official_today,
                 "last_total_receipt": official_last,
@@ -628,26 +840,39 @@ def assemble_daily_snapshot(trade_date, real_totals_map, prev_snapshot=None):
                 "active_warehouses": active_count,
                 "total_tonnage": official_total_tonnage,
                 "warehouse_tonnage": official_wh_tonnage,
-                "factory_tonnage": official_fac_tonnage
+                "factory_tonnage": official_fac_tonnage,
             },
-            "warehouses": warehouses
+            "warehouses": warehouses,
         }
 
     return snapshot
 
 
-
-def get_existing_receipt_dates():
-    """从 SQLite 查询已归档完整数据（含全部 8 大品种）的交易日集合"""
+def get_existing_receipt_dates() -> set:
+    """
+    从 SQLite 查询已完整且高质量归档的交易日集合：
+    - 8 个品种在 sync_task_status 中全部处于 SUCCESS 或 EMPTY_MARKET（排除 PARTIAL / FAILED）
+    - 8 个品种在 receipt_summaries 中均存在
+    - 排除历史遗留异常数据（500 假兜底、负有效预报、郑商所/上期所有仓单却无仓库明细）
+    """
     try:
         from db_manager import get_db_connection
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
-            SELECT trade_date, COUNT(DISTINCT variety) as cnt
-            FROM receipt_summaries
-            GROUP BY trade_date
-            HAVING cnt >= 8;
+            SELECT r.trade_date
+            FROM receipt_summaries r
+            LEFT JOIN sync_task_status s
+              ON r.trade_date = s.trade_date
+             AND r.variety = s.variety
+             AND s.data_type = 'receipt'
+            GROUP BY r.trade_date
+            HAVING COUNT(DISTINCT r.variety) >= 8
+               AND SUM(CASE WHEN s.status IN ('SUCCESS', 'EMPTY_MARKET') THEN 1 ELSE 0 END) >= 8
+               AND SUM(CASE WHEN r.total_receipt = 500 AND r.diff = 0 AND r.active_warehouses = 0 THEN 1 ELSE 0 END) = 0
+               AND SUM(CASE WHEN r.forecast < 0 THEN 1 ELSE 0 END) = 0
+               AND SUM(CASE WHEN r.variety IN ('SA','FG','MA','RB','AO','HC')
+                             AND r.total_receipt > 0 AND r.active_warehouses = 0 THEN 1 ELSE 0 END) = 0;
         """)
         dates = {r["trade_date"] for r in cur.fetchall()}
         conn.close()
@@ -655,188 +880,247 @@ def get_existing_receipt_dates():
     except Exception:
         return set()
 
-def sync_all_receipts(force=False, past_days=None):
-    """全量同步全部交易日真实仓单数据并落盘"""
+
+def sync_all_receipts(
+    force: bool = False,
+    past_days: Optional[int] = None,
+    target_dates: Optional[List[str]] = None,
+) -> None:
+    """全量/增量同步交易日真实仓单数据并落盘 SQLite"""
     ensure_dirs()
-    all_dates = get_trading_days_from_positions()
-    
-    # 抓取官方真实时序数据
-    real_totals_map = fetch_eastmoney_real_totals(page_size=max(45, len(all_dates) + 5))
+    from db_manager import init_db, save_receipt_day
+    init_db()
 
-    # 合并交易所真实已公布交易日
-    for d in real_totals_map.keys():
-        if d not in all_dates:
-            all_dates.append(d)
-    all_dates = sorted(list(set(all_dates)))
+    db_dates = get_known_trading_dates_from_db()
+    em_totals_map, em_latest_by_sym = fetch_eastmoney_real_totals(page_size=max(200, len(db_dates) + 30))
 
-    if past_days and past_days < len(all_dates):
+    min_db_date = min(db_dates) if db_dates else "2026-06-15"
+    qh_totals_map, qh_latest_by_sym = fetch_99qh_real_totals(min_date=min_db_date)
+
+    # 仅采纳确认为有效交易日的候选日期：
+    # 1) 数据库已有龙虎榜/交易日历记录，或 2) 东财接口已返回，或 3) 历史缺失段 (<= 2026-08-03) 中 99qh 与郑/上期所同步存在
+    # 避免 99qh 在中秋/国庆等休市日沿用节前数值导致误判为交易日
+    try:
+        from db_manager import get_db_connection
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT DISTINCT trade_date FROM contract_metrics;")
+        pos_dates = {r["trade_date"] for r in cur.fetchall()}
+        conn.close()
+    except Exception:
+        pos_dates = set()
+
+    earliest_pos_date = min(pos_dates) if pos_dates else "2026-08-03"
+    candidate_dates = set(pos_dates) | set(em_totals_map.keys())
+    for d in qh_totals_map.keys():
+        if min_db_date <= d < earliest_pos_date:
+            candidate_dates.add(d)
+
+    all_dates = sorted([
+        d for d in candidate_dates
+        if datetime.datetime.strptime(d, "%Y-%m-%d").weekday() < 5
+    ])
+
+    if target_dates:
+        target_set = set(target_dates)
+        all_dates = sorted(list(target_set))
+    elif past_days and past_days < len(all_dates):
         all_dates = all_dates[-past_days:]
 
-    # 查询已在 SQLite 中完整归档的交易日
     existing_dates = set() if force else get_existing_receipt_dates()
     dates_to_sync = [d for d in all_dates if d not in existing_dates]
 
     if not dates_to_sync:
         latest_date = all_dates[-1] if all_dates else "无"
-        print(f"⏩ 所有目标交易日 ({len(all_dates)} 天) 仓单与交割仓库明细均已在 SQLite 中完整归档 (包含最新交易日: {latest_date})，自动跳过抓取 (加 --force 可强制重刷)")
+        print(f"⏩ 所有目标交易日 ({len(all_dates)} 天) 均已在 SQLite 中高质量归档 (最新: {latest_date})，无需重抓 (加 --force 可强制全量刷新)")
         build_aggregate_output()
         return
 
-    print(f"📦 [交割仓库引擎] 开始同步 {len(dates_to_sync)} 个待补齐交易日的权威交割仓库明细 (已归档跳过: {len(all_dates) - len(dates_to_sync)} 天)...")
+    print(f"📦 [仓单采集引擎] 开始同步 {len(dates_to_sync)} 个交易日 (已完备跳过: {len(all_dates) - len(dates_to_sync)} 天)...")
 
-    prev_snapshot = None
+    fetched_details: Dict[str, Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]] = {}
+    max_workers = min(8, max(1, len(dates_to_sync)))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(fetch_exchange_details_for_date, d): d for d in dates_to_sync}
+        for future in as_completed(futures):
+            d_str, cz, sh = future.result()
+            fetched_details[d_str] = (cz, sh)
+
     synced_count = 0
-
+    partial_dates: List[str] = []
     for idx, t_date in enumerate(dates_to_sync):
-        snapshot = assemble_daily_snapshot(t_date, real_totals_map, prev_snapshot)
-
-        # 写入 SQLite 数据库
-        try:
-            from db_manager import save_receipt_day
-            save_receipt_day(t_date, snapshot)
-        except Exception as e:
-            print(f"  ⚠️ [{t_date}] 写入 SQLite 提示: {e}")
-
-        prev_snapshot = snapshot
+        cz, sh = fetched_details.get(t_date, (None, None))
+        # 若该日既不在龙虎榜与东财记录中，又拿不到郑商所与上期所任何官方文件，则视为休市节假日跳过
+        if t_date not in pos_dates and t_date not in em_totals_map and not cz and not sh and not target_dates:
+            print(f"  ⏭️ 跳过非交易日/休市日: {t_date}")
+            continue
+        snapshot = assemble_daily_snapshot(
+            trade_date=t_date,
+            em_totals_map=em_totals_map,
+            em_latest_by_sym=em_latest_by_sym,
+            qh_totals_map=qh_totals_map,
+            qh_latest_by_sym=qh_latest_by_sym,
+            czce_details=cz,
+            shfe_details=sh,
+        )
+        save_receipt_day(t_date, snapshot)
         synced_count += 1
-        if (idx + 1) % 10 == 0 or (idx + 1) == len(dates_to_sync):
-            print(f"  -> 已完成: {t_date} ({idx + 1}/{len(dates_to_sync)})")
 
-    print(f"✅ [交割仓库引擎] 数据写入完成，新入库/刷新: {synced_count} 天。")
+        day_partials = [
+            c for c, info in snapshot["commodities"].items()
+            if info.get("sync_status") == "PARTIAL"
+        ]
+        if day_partials:
+            partial_dates.append(f"{t_date}({','.join(day_partials)})")
+
+        if (idx + 1) % 15 == 0 or (idx + 1) == len(dates_to_sync):
+            print(f"  -> 已入库: {t_date} ({idx + 1}/{len(dates_to_sync)})")
+
+    print(f"✅ [仓单采集引擎] SQLite 入库完成，本次更新: {synced_count} 天。")
+    if partial_dates:
+        print(f"⏳ 待补齐 PARTIAL 日期（下次调度将自动刷新）: {partial_dates[-5:]}")
     build_aggregate_output()
 
-def build_aggregate_output():
+
+def build_aggregate_output() -> None:
     """
     通过 SQLite 物化导出引擎生成前端所需消费数据：
-    1. data/coking_coal_receipts.json (统一结构化 JSON)
-    2. data/coking_coal_receipts.data.js (离线垫片 window.__COKING_COAL_RECEIPT_DATA__)
+    1. data/coking_coal_receipts.json
+    2. data/coking_coal_receipts.data.js
     """
-    try:
-        from db_manager import export_receipts_to_frontend
-        export_receipts_to_frontend(JSON_OUTPUT_PATH, JS_OUTPUT_PATH)
-        print(f"📊 [SQLite 聚合发布] 已生成: {JSON_OUTPUT_PATH} ({os.path.getsize(JSON_OUTPUT_PATH) // 1024} KB)")
-        print(f"🚀 [SQLite 离线垫片] 已生成: {JS_OUTPUT_PATH} ({os.path.getsize(JS_OUTPUT_PATH) // 1024} KB)")
-        return
-    except Exception as e:
-        print(f"⚠️ SQLite 导出失败，执行文件降级: {e}")
+    from db_manager import export_receipts_to_frontend
+    export_receipts_to_frontend(JSON_OUTPUT_PATH, JS_OUTPUT_PATH)
+    print(f"📊 [SQLite 聚合发布] 已生成: {JSON_OUTPUT_PATH} ({os.path.getsize(JSON_OUTPUT_PATH) // 1024} KB)")
+    print(f"🚀 [SQLite 离线垫片] 已生成: {JS_OUTPUT_PATH} ({os.path.getsize(JS_OUTPUT_PATH) // 1024} KB)")
 
-    daily_files = sorted([f for f in os.listdir(RECEIPT_DAILY_DIR) if f.endswith(".json") and re.match(r"^\d{4}-\d{2}-\d{2}\.json$", f)])
-    if not daily_files:
-        print("⚠️ 未发现仓单日度数据文件，无法聚合。")
-        return
 
-    snapshots = []
-    for fn in daily_files:
-        fp = os.path.join(RECEIPT_DAILY_DIR, fn)
-        try:
-            with open(fp, "r", encoding="utf-8") as f:
-                snapshots.append(json.load(f))
-        except Exception as e:
-            print(f"读取 {fn} 失败: {e}")
+def verify_data_quality() -> bool:
+    """全量仓单数据质量审计：检查 500 假值、负值异常、仓库明细加和一致性、吨数一致性和 PARTIAL 状态"""
+    print("=" * 72)
+    print("🩺 正在对 SQLite 全量仓单数据进行质量体检...")
+    print("=" * 72)
 
-    if not snapshots:
-        return
+    from db_manager import get_db_connection
+    conn = get_db_connection()
+    cur = conn.cursor()
 
-    latest_snapshot = snapshots[-1]
-    all_trade_dates = [s["trade_date"] for s in snapshots]
+    cur.execute("SELECT COUNT(DISTINCT trade_date) as d_cnt, MIN(trade_date) as min_d, MAX(trade_date) as max_d FROM receipt_summaries;")
+    meta_row = cur.fetchone()
+    total_days = meta_row["d_cnt"] if meta_row else 0
+    print(f"📅 已归档交易日: {total_days} 天 ({meta_row['min_d']} ~ {meta_row['max_d']})")
 
-    aggregated_data = {
-        "sync_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "latest_trade_date": latest_snapshot["trade_date"],
-        "all_trade_dates": all_trade_dates,
-        "commodities": {}
-    }
+    issues: List[str] = []
 
-    for comm_code, meta in COMMODITY_META.items():
-        history_trend = []
-        for s in snapshots:
-            c_info = s.get("commodities", {}).get(comm_code)
-            if not c_info:
-                continue
-            sm = c_info["summary"]
-            history_trend.append({
-                "date": s["trade_date"],
-                "total_receipt": sm["total_receipt"],
-                "diff": sm["diff"],
-                "forecast": sm["forecast"],
-                "warehouse_receipt": sm.get("warehouse_receipt", sm["total_receipt"]),
-                "factory_receipt": sm.get("factory_receipt", 0),
-                "tonnage": sm.get("total_tonnage", sm["total_receipt"] * meta["ton_per_hand"]),
-                "warehouse_tonnage": sm.get("warehouse_tonnage", 0),
-                "factory_tonnage": sm.get("factory_tonnage", 0)
-            })
+    # 1. 检查疑似 500 假值（不含真正恰好为 500 且有仓库明细/有变动的日期）
+    cur.execute("""
+        SELECT trade_date, variety, total_receipt, diff, active_warehouses
+        FROM receipt_summaries
+        WHERE total_receipt = 500 AND diff = 0 AND active_warehouses = 0
+        ORDER BY trade_date DESC;
+    """)
+    fake_500_rows = cur.fetchall()
+    if fake_500_rows:
+        issues.append(f"发现疑似 500 无明细假值 {len(fake_500_rows)} 条，例如: {[(r['trade_date'], r['variety']) for r in fake_500_rows[:5]]}")
 
-        latest_comm = latest_snapshot.get("commodities", {}).get(comm_code, {})
-        aggregated_data["commodities"][comm_code] = {
-            "code": comm_code,
-            "name": meta["name"],
-            "desc": meta["desc"],
-            "exchange": meta["exchange"],
-            "unit": meta["unit"],
-            "ton_per_hand": meta["ton_per_hand"],
-            "latest_summary": latest_comm.get("summary", {}),
-            "latest_warehouses": latest_comm.get("warehouses", []),
-            "history_trend": history_trend
-        }
+    # 2. 检查负值与负预报
+    cur.execute("""
+        SELECT trade_date, variety, total_receipt, forecast
+        FROM receipt_summaries
+        WHERE total_receipt < 0 OR forecast < 0;
+    """)
+    neg_rows = cur.fetchall()
+    if neg_rows:
+        issues.append(f"发现负仓单或负有效预报 {len(neg_rows)} 条，例如: {[dict(r) for r in neg_rows[:5]]}")
 
-    # 1. 写入 data/ 目录下的 JSON
-    with open(JSON_OUTPUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(aggregated_data, f, ensure_ascii=False, indent=2)
-    print(f"📊 [聚合发布] 已生成: {JSON_OUTPUT_PATH} ({os.path.getsize(JSON_OUTPUT_PATH) // 1024} KB)")
+    # 3. 检查郑商所与上期所总仓单 vs 仓库明细累加和一致性
+    cur.execute("""
+        SELECT r.trade_date, r.variety, r.total_receipt,
+               COALESCE(SUM(w.today_receipt), 0) as wh_sum,
+               COUNT(w.id) as wh_cnt
+        FROM receipt_summaries r
+        LEFT JOIN warehouse_details w
+          ON r.trade_date = w.trade_date AND r.variety = w.variety
+        WHERE r.variety IN ('SA', 'FG', 'MA', 'RB', 'AO', 'HC')
+        GROUP BY r.trade_date, r.variety
+        HAVING r.total_receipt > 0 AND (wh_cnt = 0 OR ABS(r.total_receipt - wh_sum) > 0);
+    """)
+    mismatch_rows = cur.fetchall()
+    if mismatch_rows:
+        issues.append(f"发现郑/上期所仓单总量与仓库明细加和不一致 {len(mismatch_rows)} 条，例如: {[dict(r) for r in mismatch_rows[:5]]}")
 
-    # 2. 写入 data/ 目录下的 JS 垫片
-    js_content = f"// 大商所/郑商所/上期所 8 大品种官方真实仓单离线数据垫片\n// 同步生成时间: {aggregated_data['sync_time']}\nwindow.__COKING_COAL_RECEIPT_DATA__ = " + json.dumps(aggregated_data, ensure_ascii=False) + ";\n"
-    with open(JS_OUTPUT_PATH, "w", encoding="utf-8") as f:
-        f.write(js_content)
-    print(f"🚀 [离线垫片] 已生成: {JS_OUTPUT_PATH} ({os.path.getsize(JS_OUTPUT_PATH) // 1024} KB)")
+    # 4. 检查吨数拆分一致性
+    cur.execute("""
+        SELECT trade_date, variety, total_tonnage, warehouse_tonnage, factory_tonnage
+        FROM receipt_summaries
+        WHERE ABS((warehouse_tonnage + factory_tonnage) - total_tonnage) > 0.01;
+    """)
+    ton_rows = cur.fetchall()
+    if ton_rows:
+        issues.append(f"发现仓库+厂库吨数之和不等于总吨数 {len(ton_rows)} 条，例如: {[dict(r) for r in ton_rows[:5]]}")
 
-def verify_data_quality():
-    """数据完整性与指标真实性校验"""
-    if not os.path.exists(JSON_OUTPUT_PATH):
-        print("❌ 发布文件不存在:", JSON_OUTPUT_PATH)
-        return
-    with open(JSON_OUTPUT_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    # 5. 检查 PARTIAL/FAILED 状态
+    cur.execute("""
+        SELECT status, COUNT(*) as cnt
+        FROM sync_task_status
+        WHERE data_type = 'receipt'
+        GROUP BY status;
+    """)
+    status_summary = {r["status"]: r["cnt"] for r in cur.fetchall()}
+    print(f"📌 任务状态分布: {status_summary}")
 
-    print("🔍 [质量验收] 正在核验全量品种仓单数据与交割仓库明细...")
-    print(f"📅 最新交易日: {data.get('latest_trade_date')}")
+    # 6. 展示最新交易日全品种快照
+    if meta_row and meta_row["max_d"]:
+        latest_d = meta_row["max_d"]
+        print(f"\n🎯 最新交易日 [{latest_d}] 8 大品种仓单校验:")
+        cur.execute("""
+            SELECT r.variety, r.variety_name, r.unit, r.total_receipt, r.diff, r.forecast,
+                   r.warehouse_receipt, r.factory_receipt, r.active_warehouses, s.status
+            FROM receipt_summaries r
+            LEFT JOIN sync_task_status s
+              ON r.trade_date = s.trade_date AND r.variety = s.variety AND s.data_type = 'receipt'
+            WHERE r.trade_date = ?
+            ORDER BY r.variety;
+        """, (latest_d,))
+        for r in cur.fetchall():
+            print(
+                f"  - {r['variety']} ({r['variety_name']}): 总量={r['total_receipt']:,}{r['unit']} "
+                f"(仓:{r['warehouse_receipt']:,} / 厂:{r['factory_receipt']:,}), "
+                f"增减={r['diff']:+,}, 预报={r['forecast']:,}, 活跃库={r['active_warehouses']}家 [{r['status']}]"
+            )
 
-    # 专门核对 2026-09-16 焦煤、纯碱、焦炭的真实交割仓库明细 (直连 SQLite)
-    try:
-        from db_manager import get_db_connection
-        conn = get_db_connection()
-        cur = conn.cursor()
-        for sym in ["JM", "SA", "J", "RB"]:
-            cur.execute("""
-            SELECT variety_name, total_receipt, diff, forecast, active_warehouses
-            FROM receipt_summaries
-            WHERE variety = ? AND trade_date = '2026-09-16';
-            """, (sym,))
-            row = cur.fetchone()
-            if row:
-                print(f"\n🎯 [2026-09-16 真实核验] {row['variety_name']} ({sym}):")
-                print(f"  总仓单: {row['total_receipt']}, 增减: {row['diff']}, 预报: {row['forecast']}, 活跃交割库数: {row['active_warehouses']}")
-                cur.execute("""
-                SELECT wh_name, region, today_receipt, diff, forecast, share_pct
-                FROM warehouse_details
-                WHERE variety = ? AND trade_date = '2026-09-16'
-                ORDER BY today_receipt DESC, diff DESC;
-                """, (sym,))
-                for w in cur.fetchall():
-                    print(f"    - {w['wh_name']} ({w['region']}): 今日={w['today_receipt']}, 增减={w['diff']}, 预报={w['forecast']}, 占比={w['share_pct']}%")
-        conn.close()
-    except Exception as e:
-        print(f"SQLite 验证提示: {e}")
+    conn.close()
+
+    if issues:
+        print("\n⚠️ 体检发现以下异常:")
+        for iss in issues:
+            print(f"  - {iss}")
+        print("=" * 72)
+        return False
+
+    print("\n✅ 全部历史数据质量校验通过，无 500 假值、无负预报、无加和失配！")
+    print("=" * 72)
+    return True
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="8 大期货品种仓单日报自动化采集与聚合系统 (真实交割仓库明细引擎)")
-    parser.add_argument("--force", action="store_true", default=False, help="强制覆盖并刷新日度快照")
-    parser.add_argument("--past-days", type=int, default=None, help="指定同步过去 N 个交易日")
+    parser = argparse.ArgumentParser(description="8 大期货品种仓单日报自动化采集与聚合系统")
+    parser.add_argument("--force", action="store_true", default=False, help="强制覆盖并刷新目标交易日快照")
+    parser.add_argument("--past-days", type=int, default=None, help="指定同步最近 N 个交易日")
+    parser.add_argument("--date", "--dates", dest="dates", nargs="*", default=None, help="指定同步的交易日 (YYYY-MM-DD)")
     parser.add_argument("--verify", action="store_true", help="全面体检数据质量")
     args = parser.parse_args()
+
+    parsed_dates: List[str] = []
+    if args.dates:
+        for item in args.dates:
+            parsed_dates.extend(re.findall(r"\d{4}-\d{2}-\d{2}", item))
 
     if args.verify:
         verify_data_quality()
     else:
-        sync_all_receipts(force=args.force, past_days=args.past_days)
+        sync_all_receipts(
+            force=args.force,
+            past_days=args.past_days,
+            target_dates=parsed_dates or None,
+        )
         verify_data_quality()

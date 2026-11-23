@@ -23,14 +23,14 @@ DEFAULT_DB_PATH = os.path.join(DATA_DIR, "coking_coal.db")
 # 监控的核心品种字典
 ALL_VARIETIES = ["JM", "J", "SA", "FG", "MA", "RB", "AO", "HC"]
 VARIETY_META = {
-    "JM": {"name": "焦煤", "desc": "Coking Coal", "exchange": "大连商品交易所 (DCE)", "unit": "手", "ton_per_hand": 60},
-    "J":  {"name": "焦炭", "desc": "Coke", "exchange": "大连商品交易所 (DCE)", "unit": "手", "ton_per_hand": 100},
-    "SA": {"name": "纯碱", "desc": "Soda Ash", "exchange": "郑州商品交易所 (CZCE)", "unit": "手", "ton_per_hand": 20},
-    "FG": {"name": "玻璃", "desc": "Glass", "exchange": "郑州商品交易所 (CZCE)", "unit": "手", "ton_per_hand": 20},
-    "MA": {"name": "甲醇", "desc": "Methanol", "exchange": "郑州商品交易所 (CZCE)", "unit": "手", "ton_per_hand": 10},
-    "RB": {"name": "螺纹钢", "desc": "Rebar", "exchange": "上海期货交易所 (SHFE)", "unit": "手", "ton_per_hand": 10},
-    "AO": {"name": "氧化铝", "desc": "Alumina", "exchange": "上海期货交易所 (SHFE)", "unit": "手", "ton_per_hand": 20},
-    "HC": {"name": "热轧卷板", "desc": "Hot Rolled Coil", "exchange": "上海期货交易所 (SHFE)", "unit": "手", "ton_per_hand": 10}
+    "JM": {"name": "焦煤", "desc": "Coking Coal", "exchange": "大连商品交易所 (DCE)", "unit": "手", "ton_per_hand": 60, "receipt_unit": "手", "receipt_ton_per_hand": 60},
+    "J":  {"name": "焦炭", "desc": "Coke", "exchange": "大连商品交易所 (DCE)", "unit": "手", "ton_per_hand": 100, "receipt_unit": "手", "receipt_ton_per_hand": 100},
+    "SA": {"name": "纯碱", "desc": "Soda Ash", "exchange": "郑州商品交易所 (CZCE)", "unit": "手", "ton_per_hand": 20, "receipt_unit": "手", "receipt_ton_per_hand": 20},
+    "FG": {"name": "玻璃", "desc": "Glass", "exchange": "郑州商品交易所 (CZCE)", "unit": "手", "ton_per_hand": 20, "receipt_unit": "手", "receipt_ton_per_hand": 20},
+    "MA": {"name": "甲醇", "desc": "Methanol", "exchange": "郑州商品交易所 (CZCE)", "unit": "手", "ton_per_hand": 10, "receipt_unit": "手", "receipt_ton_per_hand": 10},
+    "RB": {"name": "螺纹钢", "desc": "Rebar", "exchange": "上海期货交易所 (SHFE)", "unit": "手", "ton_per_hand": 10, "receipt_unit": "吨", "receipt_ton_per_hand": 1},
+    "AO": {"name": "氧化铝", "desc": "Alumina", "exchange": "上海期货交易所 (SHFE)", "unit": "手", "ton_per_hand": 20, "receipt_unit": "吨", "receipt_ton_per_hand": 1},
+    "HC": {"name": "热轧卷板", "desc": "Hot Rolled Coil", "exchange": "上海期货交易所 (SHFE)", "unit": "手", "ton_per_hand": 10, "receipt_unit": "吨", "receipt_ton_per_hand": 1}
 }
 
 
@@ -309,6 +309,12 @@ def save_receipt_day(
             summary.get("factory_tonnage", 0.0)
         ))
 
+        # 先清理该日该品种旧的仓库明细，确保重刷幂等且不残留历史脏数据
+        cur.execute(
+            "DELETE FROM warehouse_details WHERE trade_date = ? AND variety = ?;",
+            (trade_date, code)
+        )
+
         wh_records = []
         for w in warehouses:
             wh_records.append((
@@ -337,7 +343,11 @@ def save_receipt_day(
                 share_pct = excluded.share_pct;
             """, wh_records)
 
-        status = "SUCCESS" if (summary.get("total_receipt", 0) > 0 or len(warehouses) > 0) else "EMPTY_MARKET"
+        explicit_status = info.get("sync_status")
+        if explicit_status in ("SUCCESS", "EMPTY_MARKET", "PARTIAL", "FAILED"):
+            status = explicit_status
+        else:
+            status = "SUCCESS" if (summary.get("total_receipt", 0) > 0 or len(warehouses) > 0) else "EMPTY_MARKET"
         update_task_status(trade_date, code, "receipt", status, record_count=len(warehouses), conn=conn)
 
     if should_close:
@@ -531,16 +541,24 @@ def export_receipts_to_frontend(
         cur.execute("""
         SELECT total_receipt, last_total_receipt, diff, forecast,
                warehouse_receipt, factory_receipt, active_warehouses,
-               total_tonnage, warehouse_tonnage, factory_tonnage
+               total_tonnage, warehouse_tonnage, factory_tonnage,
+               unit, ton_per_hand
         FROM receipt_summaries
         WHERE variety = ? AND trade_date = ?;
         """, (code, latest_trade_date))
         latest_summary_row = cur.fetchone()
-        latest_summary = dict(latest_summary_row) if latest_summary_row else {
-            "total_receipt": 0, "last_total_receipt": 0, "diff": 0, "forecast": 0,
-            "warehouse_receipt": 0, "factory_receipt": 0, "active_warehouses": 0,
-            "total_tonnage": 0, "warehouse_tonnage": 0, "factory_tonnage": 0
-        }
+        if latest_summary_row:
+            latest_summary = dict(latest_summary_row)
+            row_unit = latest_summary.pop("unit", None)
+            row_tph = latest_summary.pop("ton_per_hand", None)
+        else:
+            latest_summary = {
+                "total_receipt": 0, "last_total_receipt": 0, "diff": 0, "forecast": 0,
+                "warehouse_receipt": 0, "factory_receipt": 0, "active_warehouses": 0,
+                "total_tonnage": 0, "warehouse_tonnage": 0, "factory_tonnage": 0
+            }
+            row_unit = None
+            row_tph = None
 
         cur.execute("""
         SELECT wh_name as name, is_factory, region, last_receipt, today_receipt, diff, forecast, share_pct
@@ -559,8 +577,8 @@ def export_receipts_to_frontend(
             "name": meta.get("name", code),
             "desc": meta.get("desc", ""),
             "exchange": meta.get("exchange", ""),
-            "unit": meta.get("unit", "手"),
-            "ton_per_hand": meta.get("ton_per_hand", 0),
+            "unit": row_unit or meta.get("receipt_unit", meta.get("unit", "手")),
+            "ton_per_hand": row_tph if row_tph is not None else meta.get("receipt_ton_per_hand", meta.get("ton_per_hand", 0)),
             "latest_summary": latest_summary,
             "latest_warehouses": latest_warehouses,
             "history_trend": history_trend

@@ -1133,6 +1133,12 @@
                 return;
             }
 
+            // 支持从龙虎榜等页面通过 ?commodity=XX 直达对应品种
+            const urlCommodity = new URLSearchParams(window.location.search).get("commodity");
+            if (urlCommodity && dataset.commodities[urlCommodity.toUpperCase()]) {
+                currentCommodity = urlCommodity.toUpperCase();
+            }
+
             // 渲染导航胶囊
             renderCommodityPills();
             // 渲染当前品种数据

@@ -15,6 +15,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
     <!-- 本地全量数据源 (保障双击直接在浏览器离线打开时 100% 秒读 30 个交易日历史数据，绕过 file:// 协议 CORS 限制) -->
     <script src="./data/coking_coal_positions.data.js"></script>
+    <!-- 仓单全景离线垫片 (用于左下角悬浮展示选中品种仓单总量与净增减) -->
+    <script src="./data/coking_coal_receipts.data.js"></script>
     <style>
         :root {
             --bg-body: #F1F5F9;
@@ -1269,6 +1271,242 @@
                 grid-template-columns: 1fr;
                 gap: 8px;
             }
+            .floating-receipt-card {
+                bottom: 10px;
+                left: 10px;
+                max-width: calc(100vw - 20px);
+                min-width: 248px;
+            }
+        }
+
+        /* ====== 左下角仓单悬浮指标卡 ====== */
+        .floating-receipt-card {
+            position: fixed;
+            bottom: 18px;
+            left: 18px;
+            z-index: 90;
+            min-width: 274px;
+            max-width: 320px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-left: 3.5px solid var(--color-primary-active);
+            border-radius: 10px;
+            box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14);
+            color: var(--text-main);
+            overflow: hidden;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        body.theme-dark .floating-receipt-card {
+            background: rgba(17, 24, 39, 0.90);
+            border-color: rgba(75, 85, 99, 0.78);
+            border-left-color: var(--color-primary);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.48);
+        }
+
+        .frc-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 7px 10px;
+            background: var(--bg-card-header);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .frc-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .frc-title {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .frc-date-tag {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 4px;
+            background: rgba(59, 130, 246, 0.12);
+            color: var(--color-primary-active);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .frc-date-tag.lag {
+            background: rgba(245, 158, 11, 0.15);
+            color: #D97706;
+        }
+
+        body.theme-dark .frc-date-tag.lag {
+            color: #FBBF24;
+        }
+
+        .frc-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .frc-link-btn,
+        .frc-toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 4px;
+            font-size: 10.5px;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .frc-link-btn:hover,
+        .frc-toggle-btn:hover {
+            color: var(--color-primary-active);
+            border-color: var(--color-primary-active);
+        }
+
+        .frc-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 10px 12px;
+        }
+
+        .frc-metric {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .frc-metric + .frc-metric {
+            border-left: 1px dashed var(--border-color);
+            padding-left: 10px;
+        }
+
+        .frc-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .frc-val-row {
+            display: flex;
+            align-items: baseline;
+            gap: 3px;
+            margin-top: 1px;
+        }
+
+        .frc-val {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-main);
+        }
+
+        .frc-unit {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .frc-sub {
+            font-size: 10.5px;
+            color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .frc-val.up { color: var(--color-red); }
+        .frc-val.down { color: var(--color-green); }
+        .frc-val.zero { color: var(--text-muted); }
+
+        .frc-badge {
+            display: inline-block;
+            width: fit-content;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+        }
+
+        .frc-badge.up {
+            background: var(--color-red-bg);
+            color: var(--color-red);
+        }
+
+        .frc-badge.down {
+            background: var(--color-green-bg);
+            color: var(--color-green);
+        }
+
+        .frc-badge.zero {
+            background: var(--bg-card-header);
+            color: var(--text-muted);
+        }
+
+        /* 收起态迷你胶囊 */
+        .floating-receipt-card.collapsed {
+            min-width: 0;
+            max-width: calc(100vw - 24px);
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        .floating-receipt-card.collapsed .frc-header {
+            display: none;
+        }
+
+        .floating-receipt-card.collapsed .frc-body {
+            display: none;
+        }
+
+        .frc-mini-pill {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            font-size: 11.5px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .floating-receipt-card.collapsed .frc-mini-pill {
+            display: flex;
+        }
+
+        .frc-mini-num {
+            font-family: var(--font-mono);
+            font-weight: 800;
+        }
+
+        @media print {
+            .floating-receipt-card {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -1538,6 +1776,42 @@
 
     <div class="toast-tip" id="dom-toast">提示信息</div>
 
+    <!-- 左下角品种仓单悬浮指标卡 -->
+    <aside class="floating-receipt-card" id="floating-receipt-card" aria-label="当前品种仓单概况">
+        <div class="frc-header">
+            <div class="frc-title-wrap">
+                <span class="frc-title" id="frc-title">🏭 焦煤 (JM) 仓单</span>
+                <span class="frc-date-tag" id="frc-date-tag">--</span>
+            </div>
+            <div class="frc-actions">
+                <a class="frc-link-btn" id="frc-detail-link" href="coking_coal_receipt.html" title="跳转查看完整仓单与交割库明细">详情 ↗</a>
+                <button type="button" class="frc-toggle-btn" id="frc-collapse-btn" title="收起为迷你胶囊">—</button>
+            </div>
+        </div>
+        <div class="frc-body">
+            <div class="frc-metric">
+                <span class="frc-label">当前仓单总量</span>
+                <div class="frc-val-row">
+                    <span class="frc-val" id="frc-total-val">--</span>
+                    <span class="frc-unit" id="frc-total-unit">手</span>
+                </div>
+                <span class="frc-sub" id="frc-total-sub">--</span>
+            </div>
+            <div class="frc-metric">
+                <span class="frc-label">较上日净增减</span>
+                <div class="frc-val-row">
+                    <span class="frc-val zero" id="frc-diff-val">--</span>
+                    <span class="frc-unit" id="frc-diff-unit">手</span>
+                </div>
+                <span class="frc-badge zero" id="frc-diff-badge">--</span>
+            </div>
+        </div>
+        <div class="frc-mini-pill" id="frc-mini-pill" title="点击展开仓单悬浮卡">
+            <span id="frc-mini-text">🏭 JM 仓单: --</span>
+            <span style="color: var(--text-light); font-size: 10px;">▴</span>
+        </div>
+    </aside>
+
     <!-- 席位历史持仓趋势分析弹窗 Modal -->
     <div id="seat-trend-modal" class="modal-overlay">
         <div class="modal-container">
@@ -1599,10 +1873,136 @@
 
         // 优先使用由 coking_coal_positions.data.js 注入的全量 30 天数据源（完美支持 file:// 离线协议与双击打开）
         let currentDataset = (typeof window !== 'undefined' && window.__COKING_COAL_DATA__ && window.__COKING_COAL_DATA__.contracts) ? window.__COKING_COAL_DATA__ : EMBEDDED_DATA;
+        let receiptDataset = (typeof window !== 'undefined' && window.__COKING_COAL_RECEIPT_DATA__ && window.__COKING_COAL_RECEIPT_DATA__.commodities) ? window.__COKING_COAL_RECEIPT_DATA__ : null;
         let selectedDate = '';
         let selectedCommodityCode = 'JM';
         let selectedContractCode = '';
         let searchQuery = '';
+
+        // 渲染左下角品种仓单悬浮指标卡（按当前选中品种 + 交易日联动）
+        function renderReceiptFloatingCard(targetDate) {
+            const card = document.getElementById('floating-receipt-card');
+            if (!card) return;
+
+            const titleEl = document.getElementById('frc-title');
+            const dateTagEl = document.getElementById('frc-date-tag');
+            const detailLink = document.getElementById('frc-detail-link');
+            const totValEl = document.getElementById('frc-total-val');
+            const totUnitEl = document.getElementById('frc-total-unit');
+            const totSubEl = document.getElementById('frc-total-sub');
+            const diffValEl = document.getElementById('frc-diff-val');
+            const diffUnitEl = document.getElementById('frc-diff-unit');
+            const diffBadgeEl = document.getElementById('frc-diff-badge');
+            const miniTextEl = document.getElementById('frc-mini-text');
+
+            const commCode = selectedCommodityCode || 'JM';
+            if (detailLink) {
+                detailLink.href = `coking_coal_receipt.html?commodity=${encodeURIComponent(commCode)}`;
+            }
+
+            const comm = receiptDataset && receiptDataset.commodities ? receiptDataset.commodities[commCode] : null;
+            if (!comm) {
+                if (titleEl) titleEl.textContent = `🏭 ${commCode} 仓单`;
+                if (dateTagEl) { dateTagEl.textContent = '无数据'; dateTagEl.classList.remove('lag'); }
+                if (totValEl) totValEl.textContent = '--';
+                if (totSubEl) totSubEl.textContent = '暂无仓单记录';
+                if (diffValEl) { diffValEl.textContent = '--'; diffValEl.className = 'frc-val zero'; }
+                if (diffBadgeEl) { diffBadgeEl.textContent = '--'; diffBadgeEl.className = 'frc-badge zero'; }
+                if (miniTextEl) miniTextEl.textContent = `🏭 ${commCode} 仓单: --`;
+                return;
+            }
+
+            const trend = Array.isArray(comm.history_trend) ? comm.history_trend : [];
+            const matched = targetDate ? trend.find(item => item.date === targetDate) : null;
+            const latestSummary = comm.latest_summary || {};
+            const latestDate = receiptDataset.latest_trade_date || '';
+
+            const displayDate = matched ? matched.date : latestDate;
+            const totalReceipt = matched ? (matched.total_receipt ?? 0) : (latestSummary.total_receipt ?? 0);
+            const diffVal = matched ? (matched.diff ?? 0) : (latestSummary.diff ?? 0);
+            const tonnage = matched ? (matched.tonnage ?? 0) : (latestSummary.total_tonnage ?? 0);
+            const unit = comm.unit || '手';
+            const isSHFE = comm.exchange && (comm.exchange.includes('上期所') || comm.exchange.includes('SHFE'));
+
+            if (titleEl) titleEl.textContent = `🏭 ${comm.name} (${comm.code}) 仓单`;
+            if (dateTagEl) {
+                const shortDate = displayDate ? displayDate.slice(5) : '--';
+                const isLag = targetDate && displayDate && displayDate !== targetDate;
+                dateTagEl.textContent = isLag ? `滞后 ${shortDate}` : shortDate;
+                dateTagEl.classList.toggle('lag', Boolean(isLag));
+                dateTagEl.title = displayDate ? `仓单统计日期: ${displayDate}` : '';
+            }
+
+            if (totValEl) totValEl.textContent = Number(totalReceipt).toLocaleString('en-US');
+            if (totUnitEl) totUnitEl.textContent = unit;
+            if (diffUnitEl) diffUnitEl.textContent = unit;
+
+            if (totSubEl) {
+                if (isSHFE) {
+                    const whQty = matched ? (matched.warehouse_receipt ?? totalReceipt) : (latestSummary.warehouse_receipt ?? totalReceipt);
+                    const facQty = matched ? (matched.factory_receipt ?? 0) : (latestSummary.factory_receipt ?? 0);
+                    totSubEl.textContent = facQty > 0
+                        ? `仓 ${Number(whQty).toLocaleString('en-US')} / 厂 ${Number(facQty).toLocaleString('en-US')}`
+                        : `约 ${(Number(totalReceipt) / 10000).toFixed(2)} 万吨`;
+                } else {
+                    const tph = comm.ton_per_hand || 0;
+                    const calcTon = tonnage || (Number(totalReceipt) * tph);
+                    totSubEl.textContent = `折合 ${(Number(calcTon) / 10000).toFixed(2)} 万吨`;
+                }
+            }
+
+            if (diffValEl && diffBadgeEl) {
+                if (diffVal > 0) {
+                    diffValEl.textContent = `+${Number(diffVal).toLocaleString('en-US')}`;
+                    diffValEl.className = 'frc-val up';
+                    diffBadgeEl.textContent = '累库增加 ↑';
+                    diffBadgeEl.className = 'frc-badge up';
+                } else if (diffVal < 0) {
+                    diffValEl.textContent = Number(diffVal).toLocaleString('en-US');
+                    diffValEl.className = 'frc-val down';
+                    diffBadgeEl.textContent = '注销出库 ↓';
+                    diffBadgeEl.className = 'frc-badge down';
+                } else {
+                    diffValEl.textContent = '0';
+                    diffValEl.className = 'frc-val zero';
+                    diffBadgeEl.textContent = '持平 ＝';
+                    diffBadgeEl.className = 'frc-badge zero';
+                }
+            }
+
+            if (miniTextEl) {
+                const diffShort = diffVal > 0 ? `+${Number(diffVal).toLocaleString('en-US')}` : Number(diffVal).toLocaleString('en-US');
+                const diffColor = diffVal > 0 ? 'var(--color-red)' : (diffVal < 0 ? 'var(--color-green)' : 'var(--text-muted)');
+                miniTextEl.innerHTML = `🏭 ${comm.name}(${comm.code}) <span class="frc-mini-num">${Number(totalReceipt).toLocaleString('en-US')}${unit}</span> <span class="frc-mini-num" style="color:${diffColor};">(${diffShort})</span>`;
+            }
+        }
+
+        (function initReceiptFloatingCard() {
+            const card = document.getElementById('floating-receipt-card');
+            const collapseBtn = document.getElementById('frc-collapse-btn');
+            const miniPill = document.getElementById('frc-mini-pill');
+            if (!card) return;
+
+            const savedCollapsed = localStorage.getItem('dragon_tiger_receipt_collapsed') === '1';
+            if (savedCollapsed) {
+                card.classList.add('collapsed');
+            }
+
+            if (collapseBtn) {
+                collapseBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    card.classList.add('collapsed');
+                    localStorage.setItem('dragon_tiger_receipt_collapsed', '1');
+                });
+            }
+
+            if (miniPill) {
+                miniPill.addEventListener('click', () => {
+                    card.classList.remove('collapsed');
+                    localStorage.setItem('dragon_tiger_receipt_collapsed', '0');
+                });
+            }
+        })();
 
         // 排序状态控制
         const sortState = {
@@ -2366,6 +2766,9 @@
             if (domTradeDate) domTradeDate.textContent = `交易日：${qDate}`;
             if (domSyncTime) domSyncTime.textContent = `同步时间：${sTime}`;
 
+            // 同步刷新左下角当前品种仓单悬浮指标卡
+            renderReceiptFloatingCard(qDate && qDate !== '当日' ? qDate : '');
+
             // 检查当天数据是否尚未更新并展示缺省提示条
             const now = new Date();
             const y = now.getFullYear();
@@ -2634,17 +3037,29 @@
             if (typeof window !== 'undefined' && window.__COKING_COAL_DATA__ && window.__COKING_COAL_DATA__.contracts) {
                 currentDataset = window.__COKING_COAL_DATA__;
             }
+            if (typeof window !== 'undefined' && window.__COKING_COAL_RECEIPT_DATA__ && window.__COKING_COAL_RECEIPT_DATA__.commodities) {
+                receiptDataset = window.__COKING_COAL_RECEIPT_DATA__;
+            }
             try {
-                const urlWithTime = './data/coking_coal_positions.json?_t=' + Date.now();
-                const res = await fetch(urlWithTime, { cache: 'no-store' });
-                if (res.ok) {
-                    const data = await res.json();
+                const ts = Date.now();
+                const [posRes, recRes] = await Promise.allSettled([
+                    fetch('./data/coking_coal_positions.json?_t=' + ts, { cache: 'no-store' }),
+                    fetch('./data/coking_coal_receipts.json?_t=' + ts, { cache: 'no-store' })
+                ]);
+                if (posRes.status === 'fulfilled' && posRes.value.ok) {
+                    const data = await posRes.value.json();
                     if (data && data.contracts && data.contracts.length > 0) {
                         currentDataset = data;
                         selectedDate = '';
                         loadedFromHttp = true;
                         const hCount = (data.history && Object.keys(data.history).length) || 1;
                         if (showNotify) showToast(`✅ 成功加载 coking_coal_positions.json！(共 ${hCount} 个交易日)`);
+                    }
+                }
+                if (recRes.status === 'fulfilled' && recRes.value.ok) {
+                    const rData = await recRes.value.json();
+                    if (rData && rData.commodities) {
+                        receiptDataset = rData;
                     }
                 }
             } catch (e) {

@@ -1,5 +1,5 @@
 {
-  "sync_time": "2026-11-27 07:16:53",
+  "sync_time": "2026-11-27 07:33:58",
   "latest_trade_date": "2026-11-27",
   "all_trade_dates": [
     "2026-06-15",
@@ -1391,15 +1391,15 @@
       "unit": "手",
       "ton_per_hand": 100,
       "latest_summary": {
-        "total_receipt": 0,
-        "last_total_receipt": 0,
+        "total_receipt": 1180,
+        "last_total_receipt": 1180,
         "diff": 0,
         "forecast": 0,
-        "warehouse_receipt": 0,
+        "warehouse_receipt": 1180,
         "factory_receipt": 0,
         "active_warehouses": 0,
-        "total_tonnage": 0.0,
-        "warehouse_tonnage": 0.0,
+        "total_tonnage": 118000.0,
+        "warehouse_tonnage": 118000.0,
         "factory_tonnage": 0.0
       },
       "latest_warehouses": [],
@@ -2638,13 +2638,13 @@
         },
         {
           "date": "2026-11-27",
-          "total_receipt": 0,
+          "total_receipt": 1180,
           "diff": 0,
           "forecast": 0,
-          "warehouse_receipt": 0,
+          "warehouse_receipt": 1180,
           "factory_receipt": 0,
-          "tonnage": 0.0,
-          "warehouse_tonnage": 0.0,
+          "tonnage": 118000.0,
+          "warehouse_tonnage": 118000.0,
           "factory_tonnage": 0.0
         }
       ]

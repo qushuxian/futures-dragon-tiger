@@ -1,5 +1,5 @@
 {
-  "sync_time": "2026-11-27 07:33:21",
+  "sync_time": "2026-11-27 07:46:37",
   "query_date": "2026-11-27",
   "exchange": "大连商品交易所 (DCE) / 郑州商品交易所 (CZCE) / 上海期货交易所 (SHFE)",
   "commodities": [
@@ -178,6 +178,564 @@
     }
   ],
   "details": {
+    "RB2701": {
+      "contract": "RB2701",
+      "date": "2026-11-27",
+      "data_source": "新浪财经(官方镜像)",
+      "volume_ranking": [
+        {
+          "rank": 1,
+          "member": "中信期货",
+          "value": 204437,
+          "change": 51639
+        },
+        {
+          "rank": 2,
+          "member": "东证期货",
+          "value": 179508,
+          "change": 22040
+        },
+        {
+          "rank": 3,
+          "member": "国泰君安",
+          "value": 174610,
+          "change": 33311
+        },
+        {
+          "rank": 4,
+          "member": "银河期货",
+          "value": 115645,
+          "change": -3810
+        },
+        {
+          "rank": 5,
+          "member": "华闻期货",
+          "value": 68954,
+          "change": 26569
+        },
+        {
+          "rank": 6,
+          "member": "华泰期货",
+          "value": 57320,
+          "change": 11177
+        },
+        {
+          "rank": 7,
+          "member": "中泰期货",
+          "value": 49285,
+          "change": 8246
+        },
+        {
+          "rank": 8,
+          "member": "瑞达期货",
+          "value": 44539,
+          "change": 15203
+        },
+        {
+          "rank": 9,
+          "member": "永安期货",
+          "value": 39731,
+          "change": 11982
+        },
+        {
+          "rank": 10,
+          "member": "国投期货",
+          "value": 29828,
+          "change": 22044
+        },
+        {
+          "rank": 11,
+          "member": "广发期货",
+          "value": 26864,
+          "change": 6413
+        },
+        {
+          "rank": 12,
+          "member": "中信建投",
+          "value": 21768,
+          "change": 3400
+        },
+        {
+          "rank": 13,
+          "member": "海通期货",
+          "value": 21160,
+          "change": -85
+        },
+        {
+          "rank": 14,
+          "member": "光大期货",
+          "value": 20192,
+          "change": 8874
+        },
+        {
+          "rank": 15,
+          "member": "方正中期",
+          "value": 19294,
+          "change": -4026
+        },
+        {
+          "rank": 16,
+          "member": "申万期货",
+          "value": 19199,
+          "change": 9807
+        },
+        {
+          "rank": 17,
+          "member": "建信期货",
+          "value": 18353,
+          "change": 12195
+        },
+        {
+          "rank": 18,
+          "member": "徽商期货",
+          "value": 16781,
+          "change": 1656
+        },
+        {
+          "rank": 19,
+          "member": "中辉期货",
+          "value": 15452,
+          "change": 3237
+        },
+        {
+          "rank": 20,
+          "member": "东海期货",
+          "value": 15245,
+          "change": -1418
+        }
+      ],
+      "volume_total": {
+        "rank": "合计",
+        "member": "前20名合计",
+        "value": 1158165,
+        "change": 238454
+      },
+      "long_ranking": [
+        {
+          "rank": 1,
+          "member": "国泰君安",
+          "value": 123149,
+          "change": -25093,
+          "net_value": 26897,
+          "net_dir": "多",
+          "net_display": "多 26,897",
+          "has_both": true
+        },
+        {
+          "rank": 2,
+          "member": "中信期货",
+          "value": 85152,
+          "change": -1958,
+          "net_value": 18676,
+          "net_dir": "多",
+          "net_display": "多 18,676",
+          "has_both": true
+        },
+        {
+          "rank": 3,
+          "member": "东证期货",
+          "value": 49271,
+          "change": -1249,
+          "net_value": 2887,
+          "net_dir": "多",
+          "net_display": "多 2,887",
+          "has_both": true
+        },
+        {
+          "rank": 4,
+          "member": "永安期货",
+          "value": 41342,
+          "change": -747,
+          "net_value": -10728,
+          "net_dir": "空",
+          "net_display": "空 10,728",
+          "has_both": true
+        },
+        {
+          "rank": 5,
+          "member": "银河期货",
+          "value": 35260,
+          "change": -2910,
+          "net_value": 5513,
+          "net_dir": "多",
+          "net_display": "多 5,513",
+          "has_both": true
+        },
+        {
+          "rank": 6,
+          "member": "华泰期货",
+          "value": 33876,
+          "change": -2661,
+          "net_value": 11278,
+          "net_dir": "多",
+          "net_display": "多 11,278",
+          "has_both": true
+        },
+        {
+          "rank": 7,
+          "member": "中泰期货",
+          "value": 28694,
+          "change": -2801,
+          "net_value": 8196,
+          "net_dir": "多",
+          "net_display": "多 8,196",
+          "has_both": true
+        },
+        {
+          "rank": 8,
+          "member": "方正中期",
+          "value": 23914,
+          "change": -832,
+          "net_value": -15005,
+          "net_dir": "空",
+          "net_display": "空 15,005",
+          "has_both": true
+        },
+        {
+          "rank": 9,
+          "member": "光大期货",
+          "value": 22181,
+          "change": -1298,
+          "net_value": -572,
+          "net_dir": "空",
+          "net_display": "空 572",
+          "has_both": true
+        },
+        {
+          "rank": 10,
+          "member": "中信建投",
+          "value": 19870,
+          "change": -3087,
+          "net_value": 717,
+          "net_dir": "多",
+          "net_display": "多 717",
+          "has_both": true
+        },
+        {
+          "rank": 11,
+          "member": "广发期货",
+          "value": 16053,
+          "change": -3775,
+          "net_value": -1145,
+          "net_dir": "空",
+          "net_display": "空 1,145",
+          "has_both": true
+        },
+        {
+          "rank": 12,
+          "member": "海通期货",
+          "value": 15694,
+          "change": -332,
+          "net_value": -4138,
+          "net_dir": "空",
+          "net_display": "空 4,138",
+          "has_both": true
+        },
+        {
+          "rank": 13,
+          "member": "山金期货",
+          "value": 15473,
+          "change": -115,
+          "net_value": 15473,
+          "net_dir": "多",
+          "net_display": "多 15,473",
+          "has_both": false
+        },
+        {
+          "rank": 14,
+          "member": "东海期货",
+          "value": 15348,
+          "change": -324,
+          "net_value": 15348,
+          "net_dir": "多",
+          "net_display": "多 15,348",
+          "has_both": false
+        },
+        {
+          "rank": 15,
+          "member": "弘业期货",
+          "value": 13061,
+          "change": -27,
+          "net_value": -3652,
+          "net_dir": "空",
+          "net_display": "空 3,652",
+          "has_both": true
+        },
+        {
+          "rank": 16,
+          "member": "海证期货",
+          "value": 12952,
+          "change": -504,
+          "net_value": 12952,
+          "net_dir": "多",
+          "net_display": "多 12,952",
+          "has_both": false
+        },
+        {
+          "rank": 17,
+          "member": "创元期货",
+          "value": 12666,
+          "change": 461,
+          "net_value": 12666,
+          "net_dir": "多",
+          "net_display": "多 12,666",
+          "has_both": false
+        },
+        {
+          "rank": 18,
+          "member": "瑞达期货",
+          "value": 12301,
+          "change": 61,
+          "net_value": -10444,
+          "net_dir": "空",
+          "net_display": "空 10,444",
+          "has_both": true
+        },
+        {
+          "rank": 19,
+          "member": "中财期货",
+          "value": 12231,
+          "change": 193,
+          "net_value": 12231,
+          "net_dir": "多",
+          "net_display": "多 12,231",
+          "has_both": false
+        },
+        {
+          "rank": 20,
+          "member": "宏源期货",
+          "value": 11937,
+          "change": 1224,
+          "net_value": 11937,
+          "net_dir": "多",
+          "net_display": "多 11,937",
+          "has_both": false
+        }
+      ],
+      "long_total": {
+        "rank": "合计",
+        "member": "前20名合计",
+        "value": 600425,
+        "change": -45774,
+        "net_display": "空 7,327"
+      },
+      "short_ranking": [
+        {
+          "rank": 1,
+          "member": "国泰君安",
+          "value": 96252,
+          "change": -879,
+          "net_value": 26897,
+          "net_dir": "多",
+          "net_display": "多 26,897",
+          "has_both": true
+        },
+        {
+          "rank": 2,
+          "member": "中信期货",
+          "value": 66476,
+          "change": -20507,
+          "net_value": 18676,
+          "net_dir": "多",
+          "net_display": "多 18,676",
+          "has_both": true
+        },
+        {
+          "rank": 3,
+          "member": "永安期货",
+          "value": 52070,
+          "change": 130,
+          "net_value": -10728,
+          "net_dir": "空",
+          "net_display": "空 10,728",
+          "has_both": true
+        },
+        {
+          "rank": 4,
+          "member": "东证期货",
+          "value": 46384,
+          "change": 865,
+          "net_value": 2887,
+          "net_dir": "多",
+          "net_display": "多 2,887",
+          "has_both": true
+        },
+        {
+          "rank": 5,
+          "member": "方正中期",
+          "value": 38919,
+          "change": 2186,
+          "net_value": -15005,
+          "net_dir": "空",
+          "net_display": "空 15,005",
+          "has_both": true
+        },
+        {
+          "rank": 6,
+          "member": "银河期货",
+          "value": 29747,
+          "change": -1173,
+          "net_value": 5513,
+          "net_dir": "多",
+          "net_display": "多 5,513",
+          "has_both": true
+        },
+        {
+          "rank": 7,
+          "member": "国贸期货",
+          "value": 29717,
+          "change": -560,
+          "net_value": -29717,
+          "net_dir": "空",
+          "net_display": "空 29,717",
+          "has_both": false
+        },
+        {
+          "rank": 8,
+          "member": "国投期货",
+          "value": 23853,
+          "change": -19131,
+          "net_value": -23853,
+          "net_dir": "空",
+          "net_display": "空 23,853",
+          "has_both": false
+        },
+        {
+          "rank": 9,
+          "member": "光大期货",
+          "value": 22753,
+          "change": 1174,
+          "net_value": -572,
+          "net_dir": "空",
+          "net_display": "空 572",
+          "has_both": true
+        },
+        {
+          "rank": 10,
+          "member": "瑞达期货",
+          "value": 22745,
+          "change": 4244,
+          "net_value": -10444,
+          "net_dir": "空",
+          "net_display": "空 10,444",
+          "has_both": true
+        },
+        {
+          "rank": 11,
+          "member": "华泰期货",
+          "value": 22598,
+          "change": -2147,
+          "net_value": 11278,
+          "net_dir": "多",
+          "net_display": "多 11,278",
+          "has_both": true
+        },
+        {
+          "rank": 12,
+          "member": "中泰期货",
+          "value": 20498,
+          "change": -478,
+          "net_value": 8196,
+          "net_dir": "多",
+          "net_display": "多 8,196",
+          "has_both": true
+        },
+        {
+          "rank": 13,
+          "member": "海通期货",
+          "value": 19832,
+          "change": -1358,
+          "net_value": -4138,
+          "net_dir": "空",
+          "net_display": "空 4,138",
+          "has_both": true
+        },
+        {
+          "rank": 14,
+          "member": "中辉期货",
+          "value": 19808,
+          "change": -2142,
+          "net_value": -19808,
+          "net_dir": "空",
+          "net_display": "空 19,808",
+          "has_both": false
+        },
+        {
+          "rank": 15,
+          "member": "中信建投",
+          "value": 19153,
+          "change": 2023,
+          "net_value": 717,
+          "net_dir": "多",
+          "net_display": "多 717",
+          "has_both": true
+        },
+        {
+          "rank": 16,
+          "member": "广发期货",
+          "value": 17198,
+          "change": 909,
+          "net_value": -1145,
+          "net_dir": "空",
+          "net_display": "空 1,145",
+          "has_both": true
+        },
+        {
+          "rank": 17,
+          "member": "弘业期货",
+          "value": 16713,
+          "change": -1572,
+          "net_value": -3652,
+          "net_dir": "空",
+          "net_display": "空 3,652",
+          "has_both": true
+        },
+        {
+          "rank": 18,
+          "member": "申万期货",
+          "value": 15094,
+          "change": 1900,
+          "net_value": -15094,
+          "net_dir": "空",
+          "net_display": "空 15,094",
+          "has_both": false
+        },
+        {
+          "rank": 19,
+          "member": "高盛期货",
+          "value": 14406,
+          "change": 6333,
+          "net_value": -14406,
+          "net_dir": "空",
+          "net_display": "空 14,406",
+          "has_both": false
+        },
+        {
+          "rank": 20,
+          "member": "建信期货",
+          "value": 13536,
+          "change": -9862,
+          "net_value": -13536,
+          "net_dir": "空",
+          "net_display": "空 13,536",
+          "has_both": false
+        }
+      ],
+      "short_total": {
+        "rank": "合计",
+        "member": "前20名合计",
+        "value": 607752,
+        "change": -40045,
+        "net_display": "空 7,327"
+      },
+      "metrics": {
+        "top20_long_sum": 600425,
+        "top20_short_sum": 607752,
+        "net_spread": -7327,
+        "long_percent": 49.7,
+        "short_percent": 50.3
+      }
+    },
     "RB2703": {
       "contract": "RB2703",
       "date": "2026-11-27",
@@ -4580,564 +5138,6 @@
         "net_spread": 38078,
         "long_percent": 51.4,
         "short_percent": 48.6
-      }
-    },
-    "RB2701": {
-      "contract": "RB2701",
-      "date": "2026-11-27",
-      "data_source": "新浪财经(官方镜像)",
-      "volume_ranking": [
-        {
-          "rank": 1,
-          "member": "中信期货",
-          "value": 204437,
-          "change": 51639
-        },
-        {
-          "rank": 2,
-          "member": "东证期货",
-          "value": 179508,
-          "change": 22040
-        },
-        {
-          "rank": 3,
-          "member": "国泰君安",
-          "value": 174610,
-          "change": 33311
-        },
-        {
-          "rank": 4,
-          "member": "银河期货",
-          "value": 115645,
-          "change": -3810
-        },
-        {
-          "rank": 5,
-          "member": "华闻期货",
-          "value": 68954,
-          "change": 26569
-        },
-        {
-          "rank": 6,
-          "member": "华泰期货",
-          "value": 57320,
-          "change": 11177
-        },
-        {
-          "rank": 7,
-          "member": "中泰期货",
-          "value": 49285,
-          "change": 8246
-        },
-        {
-          "rank": 8,
-          "member": "瑞达期货",
-          "value": 44539,
-          "change": 15203
-        },
-        {
-          "rank": 9,
-          "member": "永安期货",
-          "value": 39731,
-          "change": 11982
-        },
-        {
-          "rank": 10,
-          "member": "国投期货",
-          "value": 29828,
-          "change": 22044
-        },
-        {
-          "rank": 11,
-          "member": "广发期货",
-          "value": 26864,
-          "change": 6413
-        },
-        {
-          "rank": 12,
-          "member": "中信建投",
-          "value": 21768,
-          "change": 3400
-        },
-        {
-          "rank": 13,
-          "member": "海通期货",
-          "value": 21160,
-          "change": -85
-        },
-        {
-          "rank": 14,
-          "member": "光大期货",
-          "value": 20192,
-          "change": 8874
-        },
-        {
-          "rank": 15,
-          "member": "方正中期",
-          "value": 19294,
-          "change": -4026
-        },
-        {
-          "rank": 16,
-          "member": "申万期货",
-          "value": 19199,
-          "change": 9807
-        },
-        {
-          "rank": 17,
-          "member": "建信期货",
-          "value": 18353,
-          "change": 12195
-        },
-        {
-          "rank": 18,
-          "member": "徽商期货",
-          "value": 16781,
-          "change": 1656
-        },
-        {
-          "rank": 19,
-          "member": "中辉期货",
-          "value": 15452,
-          "change": 3237
-        },
-        {
-          "rank": 20,
-          "member": "东海期货",
-          "value": 15245,
-          "change": -1418
-        }
-      ],
-      "volume_total": {
-        "rank": "合计",
-        "member": "前20名合计",
-        "value": 1158165,
-        "change": 238454
-      },
-      "long_ranking": [
-        {
-          "rank": 1,
-          "member": "国泰君安",
-          "value": 123149,
-          "change": -25093,
-          "net_value": 26897,
-          "net_dir": "多",
-          "net_display": "多 26,897",
-          "has_both": true
-        },
-        {
-          "rank": 2,
-          "member": "中信期货",
-          "value": 85152,
-          "change": -1958,
-          "net_value": 18676,
-          "net_dir": "多",
-          "net_display": "多 18,676",
-          "has_both": true
-        },
-        {
-          "rank": 3,
-          "member": "东证期货",
-          "value": 49271,
-          "change": -1249,
-          "net_value": 2887,
-          "net_dir": "多",
-          "net_display": "多 2,887",
-          "has_both": true
-        },
-        {
-          "rank": 4,
-          "member": "永安期货",
-          "value": 41342,
-          "change": -747,
-          "net_value": -10728,
-          "net_dir": "空",
-          "net_display": "空 10,728",
-          "has_both": true
-        },
-        {
-          "rank": 5,
-          "member": "银河期货",
-          "value": 35260,
-          "change": -2910,
-          "net_value": 5513,
-          "net_dir": "多",
-          "net_display": "多 5,513",
-          "has_both": true
-        },
-        {
-          "rank": 6,
-          "member": "华泰期货",
-          "value": 33876,
-          "change": -2661,
-          "net_value": 11278,
-          "net_dir": "多",
-          "net_display": "多 11,278",
-          "has_both": true
-        },
-        {
-          "rank": 7,
-          "member": "中泰期货",
-          "value": 28694,
-          "change": -2801,
-          "net_value": 8196,
-          "net_dir": "多",
-          "net_display": "多 8,196",
-          "has_both": true
-        },
-        {
-          "rank": 8,
-          "member": "方正中期",
-          "value": 23914,
-          "change": -832,
-          "net_value": -15005,
-          "net_dir": "空",
-          "net_display": "空 15,005",
-          "has_both": true
-        },
-        {
-          "rank": 9,
-          "member": "光大期货",
-          "value": 22181,
-          "change": -1298,
-          "net_value": -572,
-          "net_dir": "空",
-          "net_display": "空 572",
-          "has_both": true
-        },
-        {
-          "rank": 10,
-          "member": "中信建投",
-          "value": 19870,
-          "change": -3087,
-          "net_value": 717,
-          "net_dir": "多",
-          "net_display": "多 717",
-          "has_both": true
-        },
-        {
-          "rank": 11,
-          "member": "广发期货",
-          "value": 16053,
-          "change": -3775,
-          "net_value": -1145,
-          "net_dir": "空",
-          "net_display": "空 1,145",
-          "has_both": true
-        },
-        {
-          "rank": 12,
-          "member": "海通期货",
-          "value": 15694,
-          "change": -332,
-          "net_value": -4138,
-          "net_dir": "空",
-          "net_display": "空 4,138",
-          "has_both": true
-        },
-        {
-          "rank": 13,
-          "member": "山金期货",
-          "value": 15473,
-          "change": -115,
-          "net_value": 15473,
-          "net_dir": "多",
-          "net_display": "多 15,473",
-          "has_both": false
-        },
-        {
-          "rank": 14,
-          "member": "东海期货",
-          "value": 15348,
-          "change": -324,
-          "net_value": 15348,
-          "net_dir": "多",
-          "net_display": "多 15,348",
-          "has_both": false
-        },
-        {
-          "rank": 15,
-          "member": "弘业期货",
-          "value": 13061,
-          "change": -27,
-          "net_value": -3652,
-          "net_dir": "空",
-          "net_display": "空 3,652",
-          "has_both": true
-        },
-        {
-          "rank": 16,
-          "member": "海证期货",
-          "value": 12952,
-          "change": -504,
-          "net_value": 12952,
-          "net_dir": "多",
-          "net_display": "多 12,952",
-          "has_both": false
-        },
-        {
-          "rank": 17,
-          "member": "创元期货",
-          "value": 12666,
-          "change": 461,
-          "net_value": 12666,
-          "net_dir": "多",
-          "net_display": "多 12,666",
-          "has_both": false
-        },
-        {
-          "rank": 18,
-          "member": "瑞达期货",
-          "value": 12301,
-          "change": 61,
-          "net_value": -10444,
-          "net_dir": "空",
-          "net_display": "空 10,444",
-          "has_both": true
-        },
-        {
-          "rank": 19,
-          "member": "中财期货",
-          "value": 12231,
-          "change": 193,
-          "net_value": 12231,
-          "net_dir": "多",
-          "net_display": "多 12,231",
-          "has_both": false
-        },
-        {
-          "rank": 20,
-          "member": "宏源期货",
-          "value": 11937,
-          "change": 1224,
-          "net_value": 11937,
-          "net_dir": "多",
-          "net_display": "多 11,937",
-          "has_both": false
-        }
-      ],
-      "long_total": {
-        "rank": "合计",
-        "member": "前20名合计",
-        "value": 600425,
-        "change": -45774,
-        "net_display": "空 7,327"
-      },
-      "short_ranking": [
-        {
-          "rank": 1,
-          "member": "国泰君安",
-          "value": 96252,
-          "change": -879,
-          "net_value": 26897,
-          "net_dir": "多",
-          "net_display": "多 26,897",
-          "has_both": true
-        },
-        {
-          "rank": 2,
-          "member": "中信期货",
-          "value": 66476,
-          "change": -20507,
-          "net_value": 18676,
-          "net_dir": "多",
-          "net_display": "多 18,676",
-          "has_both": true
-        },
-        {
-          "rank": 3,
-          "member": "永安期货",
-          "value": 52070,
-          "change": 130,
-          "net_value": -10728,
-          "net_dir": "空",
-          "net_display": "空 10,728",
-          "has_both": true
-        },
-        {
-          "rank": 4,
-          "member": "东证期货",
-          "value": 46384,
-          "change": 865,
-          "net_value": 2887,
-          "net_dir": "多",
-          "net_display": "多 2,887",
-          "has_both": true
-        },
-        {
-          "rank": 5,
-          "member": "方正中期",
-          "value": 38919,
-          "change": 2186,
-          "net_value": -15005,
-          "net_dir": "空",
-          "net_display": "空 15,005",
-          "has_both": true
-        },
-        {
-          "rank": 6,
-          "member": "银河期货",
-          "value": 29747,
-          "change": -1173,
-          "net_value": 5513,
-          "net_dir": "多",
-          "net_display": "多 5,513",
-          "has_both": true
-        },
-        {
-          "rank": 7,
-          "member": "国贸期货",
-          "value": 29717,
-          "change": -560,
-          "net_value": -29717,
-          "net_dir": "空",
-          "net_display": "空 29,717",
-          "has_both": false
-        },
-        {
-          "rank": 8,
-          "member": "国投期货",
-          "value": 23853,
-          "change": -19131,
-          "net_value": -23853,
-          "net_dir": "空",
-          "net_display": "空 23,853",
-          "has_both": false
-        },
-        {
-          "rank": 9,
-          "member": "光大期货",
-          "value": 22753,
-          "change": 1174,
-          "net_value": -572,
-          "net_dir": "空",
-          "net_display": "空 572",
-          "has_both": true
-        },
-        {
-          "rank": 10,
-          "member": "瑞达期货",
-          "value": 22745,
-          "change": 4244,
-          "net_value": -10444,
-          "net_dir": "空",
-          "net_display": "空 10,444",
-          "has_both": true
-        },
-        {
-          "rank": 11,
-          "member": "华泰期货",
-          "value": 22598,
-          "change": -2147,
-          "net_value": 11278,
-          "net_dir": "多",
-          "net_display": "多 11,278",
-          "has_both": true
-        },
-        {
-          "rank": 12,
-          "member": "中泰期货",
-          "value": 20498,
-          "change": -478,
-          "net_value": 8196,
-          "net_dir": "多",
-          "net_display": "多 8,196",
-          "has_both": true
-        },
-        {
-          "rank": 13,
-          "member": "海通期货",
-          "value": 19832,
-          "change": -1358,
-          "net_value": -4138,
-          "net_dir": "空",
-          "net_display": "空 4,138",
-          "has_both": true
-        },
-        {
-          "rank": 14,
-          "member": "中辉期货",
-          "value": 19808,
-          "change": -2142,
-          "net_value": -19808,
-          "net_dir": "空",
-          "net_display": "空 19,808",
-          "has_both": false
-        },
-        {
-          "rank": 15,
-          "member": "中信建投",
-          "value": 19153,
-          "change": 2023,
-          "net_value": 717,
-          "net_dir": "多",
-          "net_display": "多 717",
-          "has_both": true
-        },
-        {
-          "rank": 16,
-          "member": "广发期货",
-          "value": 17198,
-          "change": 909,
-          "net_value": -1145,
-          "net_dir": "空",
-          "net_display": "空 1,145",
-          "has_both": true
-        },
-        {
-          "rank": 17,
-          "member": "弘业期货",
-          "value": 16713,
-          "change": -1572,
-          "net_value": -3652,
-          "net_dir": "空",
-          "net_display": "空 3,652",
-          "has_both": true
-        },
-        {
-          "rank": 18,
-          "member": "申万期货",
-          "value": 15094,
-          "change": 1900,
-          "net_value": -15094,
-          "net_dir": "空",
-          "net_display": "空 15,094",
-          "has_both": false
-        },
-        {
-          "rank": 19,
-          "member": "高盛期货",
-          "value": 14406,
-          "change": 6333,
-          "net_value": -14406,
-          "net_dir": "空",
-          "net_display": "空 14,406",
-          "has_both": false
-        },
-        {
-          "rank": 20,
-          "member": "建信期货",
-          "value": 13536,
-          "change": -9862,
-          "net_value": -13536,
-          "net_dir": "空",
-          "net_display": "空 13,536",
-          "has_both": false
-        }
-      ],
-      "short_total": {
-        "rank": "合计",
-        "member": "前20名合计",
-        "value": 607752,
-        "change": -40045,
-        "net_display": "空 7,327"
-      },
-      "metrics": {
-        "top20_long_sum": 600425,
-        "top20_short_sum": 607752,
-        "net_spread": -7327,
-        "long_percent": 49.7,
-        "short_percent": 50.3
       }
     },
     "HC2703": {
@@ -1961114,7 +1961114,7 @@
       }
     },
     "2026-11-27": {
-      "sync_time": "2026-11-27 07:33:21",
+      "sync_time": "2026-11-27 07:46:37",
       "contracts_by_commodity": {
         "JM": [],
         "J": [],
@@ -1961241,6 +1961241,564 @@
         }
       ],
       "details": {
+        "RB2701": {
+          "contract": "RB2701",
+          "date": "2026-11-27",
+          "data_source": "新浪财经(官方镜像)",
+          "volume_ranking": [
+            {
+              "rank": 1,
+              "member": "中信期货",
+              "value": 204437,
+              "change": 51639
+            },
+            {
+              "rank": 2,
+              "member": "东证期货",
+              "value": 179508,
+              "change": 22040
+            },
+            {
+              "rank": 3,
+              "member": "国泰君安",
+              "value": 174610,
+              "change": 33311
+            },
+            {
+              "rank": 4,
+              "member": "银河期货",
+              "value": 115645,
+              "change": -3810
+            },
+            {
+              "rank": 5,
+              "member": "华闻期货",
+              "value": 68954,
+              "change": 26569
+            },
+            {
+              "rank": 6,
+              "member": "华泰期货",
+              "value": 57320,
+              "change": 11177
+            },
+            {
+              "rank": 7,
+              "member": "中泰期货",
+              "value": 49285,
+              "change": 8246
+            },
+            {
+              "rank": 8,
+              "member": "瑞达期货",
+              "value": 44539,
+              "change": 15203
+            },
+            {
+              "rank": 9,
+              "member": "永安期货",
+              "value": 39731,
+              "change": 11982
+            },
+            {
+              "rank": 10,
+              "member": "国投期货",
+              "value": 29828,
+              "change": 22044
+            },
+            {
+              "rank": 11,
+              "member": "广发期货",
+              "value": 26864,
+              "change": 6413
+            },
+            {
+              "rank": 12,
+              "member": "中信建投",
+              "value": 21768,
+              "change": 3400
+            },
+            {
+              "rank": 13,
+              "member": "海通期货",
+              "value": 21160,
+              "change": -85
+            },
+            {
+              "rank": 14,
+              "member": "光大期货",
+              "value": 20192,
+              "change": 8874
+            },
+            {
+              "rank": 15,
+              "member": "方正中期",
+              "value": 19294,
+              "change": -4026
+            },
+            {
+              "rank": 16,
+              "member": "申万期货",
+              "value": 19199,
+              "change": 9807
+            },
+            {
+              "rank": 17,
+              "member": "建信期货",
+              "value": 18353,
+              "change": 12195
+            },
+            {
+              "rank": 18,
+              "member": "徽商期货",
+              "value": 16781,
+              "change": 1656
+            },
+            {
+              "rank": 19,
+              "member": "中辉期货",
+              "value": 15452,
+              "change": 3237
+            },
+            {
+              "rank": 20,
+              "member": "东海期货",
+              "value": 15245,
+              "change": -1418
+            }
+          ],
+          "volume_total": {
+            "rank": "合计",
+            "member": "前20名合计",
+            "value": 1158165,
+            "change": 238454
+          },
+          "long_ranking": [
+            {
+              "rank": 1,
+              "member": "国泰君安",
+              "value": 123149,
+              "change": -25093,
+              "net_value": 26897,
+              "net_dir": "多",
+              "net_display": "多 26,897",
+              "has_both": true
+            },
+            {
+              "rank": 2,
+              "member": "中信期货",
+              "value": 85152,
+              "change": -1958,
+              "net_value": 18676,
+              "net_dir": "多",
+              "net_display": "多 18,676",
+              "has_both": true
+            },
+            {
+              "rank": 3,
+              "member": "东证期货",
+              "value": 49271,
+              "change": -1249,
+              "net_value": 2887,
+              "net_dir": "多",
+              "net_display": "多 2,887",
+              "has_both": true
+            },
+            {
+              "rank": 4,
+              "member": "永安期货",
+              "value": 41342,
+              "change": -747,
+              "net_value": -10728,
+              "net_dir": "空",
+              "net_display": "空 10,728",
+              "has_both": true
+            },
+            {
+              "rank": 5,
+              "member": "银河期货",
+              "value": 35260,
+              "change": -2910,
+              "net_value": 5513,
+              "net_dir": "多",
+              "net_display": "多 5,513",
+              "has_both": true
+            },
+            {
+              "rank": 6,
+              "member": "华泰期货",
+              "value": 33876,
+              "change": -2661,
+              "net_value": 11278,
+              "net_dir": "多",
+              "net_display": "多 11,278",
+              "has_both": true
+            },
+            {
+              "rank": 7,
+              "member": "中泰期货",
+              "value": 28694,
+              "change": -2801,
+              "net_value": 8196,
+              "net_dir": "多",
+              "net_display": "多 8,196",
+              "has_both": true
+            },
+            {
+              "rank": 8,
+              "member": "方正中期",
+              "value": 23914,
+              "change": -832,
+              "net_value": -15005,
+              "net_dir": "空",
+              "net_display": "空 15,005",
+              "has_both": true
+            },
+            {
+              "rank": 9,
+              "member": "光大期货",
+              "value": 22181,
+              "change": -1298,
+              "net_value": -572,
+              "net_dir": "空",
+              "net_display": "空 572",
+              "has_both": true
+            },
+            {
+              "rank": 10,
+              "member": "中信建投",
+              "value": 19870,
+              "change": -3087,
+              "net_value": 717,
+              "net_dir": "多",
+              "net_display": "多 717",
+              "has_both": true
+            },
+            {
+              "rank": 11,
+              "member": "广发期货",
+              "value": 16053,
+              "change": -3775,
+              "net_value": -1145,
+              "net_dir": "空",
+              "net_display": "空 1,145",
+              "has_both": true
+            },
+            {
+              "rank": 12,
+              "member": "海通期货",
+              "value": 15694,
+              "change": -332,
+              "net_value": -4138,
+              "net_dir": "空",
+              "net_display": "空 4,138",
+              "has_both": true
+            },
+            {
+              "rank": 13,
+              "member": "山金期货",
+              "value": 15473,
+              "change": -115,
+              "net_value": 15473,
+              "net_dir": "多",
+              "net_display": "多 15,473",
+              "has_both": false
+            },
+            {
+              "rank": 14,
+              "member": "东海期货",
+              "value": 15348,
+              "change": -324,
+              "net_value": 15348,
+              "net_dir": "多",
+              "net_display": "多 15,348",
+              "has_both": false
+            },
+            {
+              "rank": 15,
+              "member": "弘业期货",
+              "value": 13061,
+              "change": -27,
+              "net_value": -3652,
+              "net_dir": "空",
+              "net_display": "空 3,652",
+              "has_both": true
+            },
+            {
+              "rank": 16,
+              "member": "海证期货",
+              "value": 12952,
+              "change": -504,
+              "net_value": 12952,
+              "net_dir": "多",
+              "net_display": "多 12,952",
+              "has_both": false
+            },
+            {
+              "rank": 17,
+              "member": "创元期货",
+              "value": 12666,
+              "change": 461,
+              "net_value": 12666,
+              "net_dir": "多",
+              "net_display": "多 12,666",
+              "has_both": false
+            },
+            {
+              "rank": 18,
+              "member": "瑞达期货",
+              "value": 12301,
+              "change": 61,
+              "net_value": -10444,
+              "net_dir": "空",
+              "net_display": "空 10,444",
+              "has_both": true
+            },
+            {
+              "rank": 19,
+              "member": "中财期货",
+              "value": 12231,
+              "change": 193,
+              "net_value": 12231,
+              "net_dir": "多",
+              "net_display": "多 12,231",
+              "has_both": false
+            },
+            {
+              "rank": 20,
+              "member": "宏源期货",
+              "value": 11937,
+              "change": 1224,
+              "net_value": 11937,
+              "net_dir": "多",
+              "net_display": "多 11,937",
+              "has_both": false
+            }
+          ],
+          "long_total": {
+            "rank": "合计",
+            "member": "前20名合计",
+            "value": 600425,
+            "change": -45774,
+            "net_display": "空 7,327"
+          },
+          "short_ranking": [
+            {
+              "rank": 1,
+              "member": "国泰君安",
+              "value": 96252,
+              "change": -879,
+              "net_value": 26897,
+              "net_dir": "多",
+              "net_display": "多 26,897",
+              "has_both": true
+            },
+            {
+              "rank": 2,
+              "member": "中信期货",
+              "value": 66476,
+              "change": -20507,
+              "net_value": 18676,
+              "net_dir": "多",
+              "net_display": "多 18,676",
+              "has_both": true
+            },
+            {
+              "rank": 3,
+              "member": "永安期货",
+              "value": 52070,
+              "change": 130,
+              "net_value": -10728,
+              "net_dir": "空",
+              "net_display": "空 10,728",
+              "has_both": true
+            },
+            {
+              "rank": 4,
+              "member": "东证期货",
+              "value": 46384,
+              "change": 865,
+              "net_value": 2887,
+              "net_dir": "多",
+              "net_display": "多 2,887",
+              "has_both": true
+            },
+            {
+              "rank": 5,
+              "member": "方正中期",
+              "value": 38919,
+              "change": 2186,
+              "net_value": -15005,
+              "net_dir": "空",
+              "net_display": "空 15,005",
+              "has_both": true
+            },
+            {
+              "rank": 6,
+              "member": "银河期货",
+              "value": 29747,
+              "change": -1173,
+              "net_value": 5513,
+              "net_dir": "多",
+              "net_display": "多 5,513",
+              "has_both": true
+            },
+            {
+              "rank": 7,
+              "member": "国贸期货",
+              "value": 29717,
+              "change": -560,
+              "net_value": -29717,
+              "net_dir": "空",
+              "net_display": "空 29,717",
+              "has_both": false
+            },
+            {
+              "rank": 8,
+              "member": "国投期货",
+              "value": 23853,
+              "change": -19131,
+              "net_value": -23853,
+              "net_dir": "空",
+              "net_display": "空 23,853",
+              "has_both": false
+            },
+            {
+              "rank": 9,
+              "member": "光大期货",
+              "value": 22753,
+              "change": 1174,
+              "net_value": -572,
+              "net_dir": "空",
+              "net_display": "空 572",
+              "has_both": true
+            },
+            {
+              "rank": 10,
+              "member": "瑞达期货",
+              "value": 22745,
+              "change": 4244,
+              "net_value": -10444,
+              "net_dir": "空",
+              "net_display": "空 10,444",
+              "has_both": true
+            },
+            {
+              "rank": 11,
+              "member": "华泰期货",
+              "value": 22598,
+              "change": -2147,
+              "net_value": 11278,
+              "net_dir": "多",
+              "net_display": "多 11,278",
+              "has_both": true
+            },
+            {
+              "rank": 12,
+              "member": "中泰期货",
+              "value": 20498,
+              "change": -478,
+              "net_value": 8196,
+              "net_dir": "多",
+              "net_display": "多 8,196",
+              "has_both": true
+            },
+            {
+              "rank": 13,
+              "member": "海通期货",
+              "value": 19832,
+              "change": -1358,
+              "net_value": -4138,
+              "net_dir": "空",
+              "net_display": "空 4,138",
+              "has_both": true
+            },
+            {
+              "rank": 14,
+              "member": "中辉期货",
+              "value": 19808,
+              "change": -2142,
+              "net_value": -19808,
+              "net_dir": "空",
+              "net_display": "空 19,808",
+              "has_both": false
+            },
+            {
+              "rank": 15,
+              "member": "中信建投",
+              "value": 19153,
+              "change": 2023,
+              "net_value": 717,
+              "net_dir": "多",
+              "net_display": "多 717",
+              "has_both": true
+            },
+            {
+              "rank": 16,
+              "member": "广发期货",
+              "value": 17198,
+              "change": 909,
+              "net_value": -1145,
+              "net_dir": "空",
+              "net_display": "空 1,145",
+              "has_both": true
+            },
+            {
+              "rank": 17,
+              "member": "弘业期货",
+              "value": 16713,
+              "change": -1572,
+              "net_value": -3652,
+              "net_dir": "空",
+              "net_display": "空 3,652",
+              "has_both": true
+            },
+            {
+              "rank": 18,
+              "member": "申万期货",
+              "value": 15094,
+              "change": 1900,
+              "net_value": -15094,
+              "net_dir": "空",
+              "net_display": "空 15,094",
+              "has_both": false
+            },
+            {
+              "rank": 19,
+              "member": "高盛期货",
+              "value": 14406,
+              "change": 6333,
+              "net_value": -14406,
+              "net_dir": "空",
+              "net_display": "空 14,406",
+              "has_both": false
+            },
+            {
+              "rank": 20,
+              "member": "建信期货",
+              "value": 13536,
+              "change": -9862,
+              "net_value": -13536,
+              "net_dir": "空",
+              "net_display": "空 13,536",
+              "has_both": false
+            }
+          ],
+          "short_total": {
+            "rank": "合计",
+            "member": "前20名合计",
+            "value": 607752,
+            "change": -40045,
+            "net_display": "空 7,327"
+          },
+          "metrics": {
+            "top20_long_sum": 600425,
+            "top20_short_sum": 607752,
+            "net_spread": -7327,
+            "long_percent": 49.7,
+            "short_percent": 50.3
+          }
+        },
         "RB2703": {
           "contract": "RB2703",
           "date": "2026-11-27",
@@ -1965643,564 +1966201,6 @@
             "net_spread": 38078,
             "long_percent": 51.4,
             "short_percent": 48.6
-          }
-        },
-        "RB2701": {
-          "contract": "RB2701",
-          "date": "2026-11-27",
-          "data_source": "新浪财经(官方镜像)",
-          "volume_ranking": [
-            {
-              "rank": 1,
-              "member": "中信期货",
-              "value": 204437,
-              "change": 51639
-            },
-            {
-              "rank": 2,
-              "member": "东证期货",
-              "value": 179508,
-              "change": 22040
-            },
-            {
-              "rank": 3,
-              "member": "国泰君安",
-              "value": 174610,
-              "change": 33311
-            },
-            {
-              "rank": 4,
-              "member": "银河期货",
-              "value": 115645,
-              "change": -3810
-            },
-            {
-              "rank": 5,
-              "member": "华闻期货",
-              "value": 68954,
-              "change": 26569
-            },
-            {
-              "rank": 6,
-              "member": "华泰期货",
-              "value": 57320,
-              "change": 11177
-            },
-            {
-              "rank": 7,
-              "member": "中泰期货",
-              "value": 49285,
-              "change": 8246
-            },
-            {
-              "rank": 8,
-              "member": "瑞达期货",
-              "value": 44539,
-              "change": 15203
-            },
-            {
-              "rank": 9,
-              "member": "永安期货",
-              "value": 39731,
-              "change": 11982
-            },
-            {
-              "rank": 10,
-              "member": "国投期货",
-              "value": 29828,
-              "change": 22044
-            },
-            {
-              "rank": 11,
-              "member": "广发期货",
-              "value": 26864,
-              "change": 6413
-            },
-            {
-              "rank": 12,
-              "member": "中信建投",
-              "value": 21768,
-              "change": 3400
-            },
-            {
-              "rank": 13,
-              "member": "海通期货",
-              "value": 21160,
-              "change": -85
-            },
-            {
-              "rank": 14,
-              "member": "光大期货",
-              "value": 20192,
-              "change": 8874
-            },
-            {
-              "rank": 15,
-              "member": "方正中期",
-              "value": 19294,
-              "change": -4026
-            },
-            {
-              "rank": 16,
-              "member": "申万期货",
-              "value": 19199,
-              "change": 9807
-            },
-            {
-              "rank": 17,
-              "member": "建信期货",
-              "value": 18353,
-              "change": 12195
-            },
-            {
-              "rank": 18,
-              "member": "徽商期货",
-              "value": 16781,
-              "change": 1656
-            },
-            {
-              "rank": 19,
-              "member": "中辉期货",
-              "value": 15452,
-              "change": 3237
-            },
-            {
-              "rank": 20,
-              "member": "东海期货",
-              "value": 15245,
-              "change": -1418
-            }
-          ],
-          "volume_total": {
-            "rank": "合计",
-            "member": "前20名合计",
-            "value": 1158165,
-            "change": 238454
-          },
-          "long_ranking": [
-            {
-              "rank": 1,
-              "member": "国泰君安",
-              "value": 123149,
-              "change": -25093,
-              "net_value": 26897,
-              "net_dir": "多",
-              "net_display": "多 26,897",
-              "has_both": true
-            },
-            {
-              "rank": 2,
-              "member": "中信期货",
-              "value": 85152,
-              "change": -1958,
-              "net_value": 18676,
-              "net_dir": "多",
-              "net_display": "多 18,676",
-              "has_both": true
-            },
-            {
-              "rank": 3,
-              "member": "东证期货",
-              "value": 49271,
-              "change": -1249,
-              "net_value": 2887,
-              "net_dir": "多",
-              "net_display": "多 2,887",
-              "has_both": true
-            },
-            {
-              "rank": 4,
-              "member": "永安期货",
-              "value": 41342,
-              "change": -747,
-              "net_value": -10728,
-              "net_dir": "空",
-              "net_display": "空 10,728",
-              "has_both": true
-            },
-            {
-              "rank": 5,
-              "member": "银河期货",
-              "value": 35260,
-              "change": -2910,
-              "net_value": 5513,
-              "net_dir": "多",
-              "net_display": "多 5,513",
-              "has_both": true
-            },
-            {
-              "rank": 6,
-              "member": "华泰期货",
-              "value": 33876,
-              "change": -2661,
-              "net_value": 11278,
-              "net_dir": "多",
-              "net_display": "多 11,278",
-              "has_both": true
-            },
-            {
-              "rank": 7,
-              "member": "中泰期货",
-              "value": 28694,
-              "change": -2801,
-              "net_value": 8196,
-              "net_dir": "多",
-              "net_display": "多 8,196",
-              "has_both": true
-            },
-            {
-              "rank": 8,
-              "member": "方正中期",
-              "value": 23914,
-              "change": -832,
-              "net_value": -15005,
-              "net_dir": "空",
-              "net_display": "空 15,005",
-              "has_both": true
-            },
-            {
-              "rank": 9,
-              "member": "光大期货",
-              "value": 22181,
-              "change": -1298,
-              "net_value": -572,
-              "net_dir": "空",
-              "net_display": "空 572",
-              "has_both": true
-            },
-            {
-              "rank": 10,
-              "member": "中信建投",
-              "value": 19870,
-              "change": -3087,
-              "net_value": 717,
-              "net_dir": "多",
-              "net_display": "多 717",
-              "has_both": true
-            },
-            {
-              "rank": 11,
-              "member": "广发期货",
-              "value": 16053,
-              "change": -3775,
-              "net_value": -1145,
-              "net_dir": "空",
-              "net_display": "空 1,145",
-              "has_both": true
-            },
-            {
-              "rank": 12,
-              "member": "海通期货",
-              "value": 15694,
-              "change": -332,
-              "net_value": -4138,
-              "net_dir": "空",
-              "net_display": "空 4,138",
-              "has_both": true
-            },
-            {
-              "rank": 13,
-              "member": "山金期货",
-              "value": 15473,
-              "change": -115,
-              "net_value": 15473,
-              "net_dir": "多",
-              "net_display": "多 15,473",
-              "has_both": false
-            },
-            {
-              "rank": 14,
-              "member": "东海期货",
-              "value": 15348,
-              "change": -324,
-              "net_value": 15348,
-              "net_dir": "多",
-              "net_display": "多 15,348",
-              "has_both": false
-            },
-            {
-              "rank": 15,
-              "member": "弘业期货",
-              "value": 13061,
-              "change": -27,
-              "net_value": -3652,
-              "net_dir": "空",
-              "net_display": "空 3,652",
-              "has_both": true
-            },
-            {
-              "rank": 16,
-              "member": "海证期货",
-              "value": 12952,
-              "change": -504,
-              "net_value": 12952,
-              "net_dir": "多",
-              "net_display": "多 12,952",
-              "has_both": false
-            },
-            {
-              "rank": 17,
-              "member": "创元期货",
-              "value": 12666,
-              "change": 461,
-              "net_value": 12666,
-              "net_dir": "多",
-              "net_display": "多 12,666",
-              "has_both": false
-            },
-            {
-              "rank": 18,
-              "member": "瑞达期货",
-              "value": 12301,
-              "change": 61,
-              "net_value": -10444,
-              "net_dir": "空",
-              "net_display": "空 10,444",
-              "has_both": true
-            },
-            {
-              "rank": 19,
-              "member": "中财期货",
-              "value": 12231,
-              "change": 193,
-              "net_value": 12231,
-              "net_dir": "多",
-              "net_display": "多 12,231",
-              "has_both": false
-            },
-            {
-              "rank": 20,
-              "member": "宏源期货",
-              "value": 11937,
-              "change": 1224,
-              "net_value": 11937,
-              "net_dir": "多",
-              "net_display": "多 11,937",
-              "has_both": false
-            }
-          ],
-          "long_total": {
-            "rank": "合计",
-            "member": "前20名合计",
-            "value": 600425,
-            "change": -45774,
-            "net_display": "空 7,327"
-          },
-          "short_ranking": [
-            {
-              "rank": 1,
-              "member": "国泰君安",
-              "value": 96252,
-              "change": -879,
-              "net_value": 26897,
-              "net_dir": "多",
-              "net_display": "多 26,897",
-              "has_both": true
-            },
-            {
-              "rank": 2,
-              "member": "中信期货",
-              "value": 66476,
-              "change": -20507,
-              "net_value": 18676,
-              "net_dir": "多",
-              "net_display": "多 18,676",
-              "has_both": true
-            },
-            {
-              "rank": 3,
-              "member": "永安期货",
-              "value": 52070,
-              "change": 130,
-              "net_value": -10728,
-              "net_dir": "空",
-              "net_display": "空 10,728",
-              "has_both": true
-            },
-            {
-              "rank": 4,
-              "member": "东证期货",
-              "value": 46384,
-              "change": 865,
-              "net_value": 2887,
-              "net_dir": "多",
-              "net_display": "多 2,887",
-              "has_both": true
-            },
-            {
-              "rank": 5,
-              "member": "方正中期",
-              "value": 38919,
-              "change": 2186,
-              "net_value": -15005,
-              "net_dir": "空",
-              "net_display": "空 15,005",
-              "has_both": true
-            },
-            {
-              "rank": 6,
-              "member": "银河期货",
-              "value": 29747,
-              "change": -1173,
-              "net_value": 5513,
-              "net_dir": "多",
-              "net_display": "多 5,513",
-              "has_both": true
-            },
-            {
-              "rank": 7,
-              "member": "国贸期货",
-              "value": 29717,
-              "change": -560,
-              "net_value": -29717,
-              "net_dir": "空",
-              "net_display": "空 29,717",
-              "has_both": false
-            },
-            {
-              "rank": 8,
-              "member": "国投期货",
-              "value": 23853,
-              "change": -19131,
-              "net_value": -23853,
-              "net_dir": "空",
-              "net_display": "空 23,853",
-              "has_both": false
-            },
-            {
-              "rank": 9,
-              "member": "光大期货",
-              "value": 22753,
-              "change": 1174,
-              "net_value": -572,
-              "net_dir": "空",
-              "net_display": "空 572",
-              "has_both": true
-            },
-            {
-              "rank": 10,
-              "member": "瑞达期货",
-              "value": 22745,
-              "change": 4244,
-              "net_value": -10444,
-              "net_dir": "空",
-              "net_display": "空 10,444",
-              "has_both": true
-            },
-            {
-              "rank": 11,
-              "member": "华泰期货",
-              "value": 22598,
-              "change": -2147,
-              "net_value": 11278,
-              "net_dir": "多",
-              "net_display": "多 11,278",
-              "has_both": true
-            },
-            {
-              "rank": 12,
-              "member": "中泰期货",
-              "value": 20498,
-              "change": -478,
-              "net_value": 8196,
-              "net_dir": "多",
-              "net_display": "多 8,196",
-              "has_both": true
-            },
-            {
-              "rank": 13,
-              "member": "海通期货",
-              "value": 19832,
-              "change": -1358,
-              "net_value": -4138,
-              "net_dir": "空",
-              "net_display": "空 4,138",
-              "has_both": true
-            },
-            {
-              "rank": 14,
-              "member": "中辉期货",
-              "value": 19808,
-              "change": -2142,
-              "net_value": -19808,
-              "net_dir": "空",
-              "net_display": "空 19,808",
-              "has_both": false
-            },
-            {
-              "rank": 15,
-              "member": "中信建投",
-              "value": 19153,
-              "change": 2023,
-              "net_value": 717,
-              "net_dir": "多",
-              "net_display": "多 717",
-              "has_both": true
-            },
-            {
-              "rank": 16,
-              "member": "广发期货",
-              "value": 17198,
-              "change": 909,
-              "net_value": -1145,
-              "net_dir": "空",
-              "net_display": "空 1,145",
-              "has_both": true
-            },
-            {
-              "rank": 17,
-              "member": "弘业期货",
-              "value": 16713,
-              "change": -1572,
-              "net_value": -3652,
-              "net_dir": "空",
-              "net_display": "空 3,652",
-              "has_both": true
-            },
-            {
-              "rank": 18,
-              "member": "申万期货",
-              "value": 15094,
-              "change": 1900,
-              "net_value": -15094,
-              "net_dir": "空",
-              "net_display": "空 15,094",
-              "has_both": false
-            },
-            {
-              "rank": 19,
-              "member": "高盛期货",
-              "value": 14406,
-              "change": 6333,
-              "net_value": -14406,
-              "net_dir": "空",
-              "net_display": "空 14,406",
-              "has_both": false
-            },
-            {
-              "rank": 20,
-              "member": "建信期货",
-              "value": 13536,
-              "change": -9862,
-              "net_value": -13536,
-              "net_dir": "空",
-              "net_display": "空 13,536",
-              "has_both": false
-            }
-          ],
-          "short_total": {
-            "rank": "合计",
-            "member": "前20名合计",
-            "value": 607752,
-            "change": -40045,
-            "net_display": "空 7,327"
-          },
-          "metrics": {
-            "top20_long_sum": 600425,
-            "top20_short_sum": 607752,
-            "net_spread": -7327,
-            "long_percent": 49.7,
-            "short_percent": 50.3
           }
         },
         "HC2703": {

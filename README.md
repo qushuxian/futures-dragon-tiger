@@ -32,7 +32,6 @@ futures-dragon-tiger/
 ├── coking_coal_receipt.html           # 【看板 2】仓单与交割库存全景大屏 (8大品种时序趋势、仓库分布)
 ├── czce_contract_spread.html          # 【看板 3】郑商所纯碱/玻璃 01·05·09 合约季节性价差大屏 (按年叠加对比)
 ├── requirements.txt                   # Python 运行依赖 (requests, pandas, beautifulsoup4, openpyxl)
-├── BASELINE_ROLLBACK_GUIDE.md         # 稳定基线版本归档与秒级回滚操作手册
 └── README.md                          # 技术与使用文档
 ```
 
@@ -185,16 +184,4 @@ python3 modules/db_manager.py
 - **零环境依赖，双击即开**：直接在文件管理器中双击打开 `coking_coal_dragon_tiger.html`、`coking_coal_receipt.html` 或 `czce_contract_spread.html`，无需配置任何本地服务器；
 - **支持主题切换**：支持深色极客风（🌙）与浅色商务风（☀️）一键切换；
 - **一键导出高清图**：点击顶栏“📸 导出图片”即可一键打印或导出高质量研报长图。
-
----
-
-## 📌 版本基线与回滚指引 (Version Baseline & Rollback)
-
-- **当前封板基线**：`v2.0.0`（双看板全功能稳定版，含截至 2026-09-30 的 58 个交易日完整数据）
-- **Commit Hash**：`14ecd0f076729c2e95344c931a4fed0a39fd55cb`（短码：`14ecd0f`）
-- **一键回滚本模块命令**：
-  ```bash
-  git checkout 14ecd0f -- dce_coking_coal/ && git clean -fd dce_coking_coal/
-  ```
-  详细回滚操作与多套备用策略请查阅：[BASELINE_ROLLBACK_GUIDE.md](./BASELINE_ROLLBACK_GUIDE.md)。
 

@@ -1532,27 +1532,31 @@
             const eligibleRows = cutoffDate ? rows.filter(r => r.date <= cutoffDate) : rows.slice();
 
             if (!eligibleRows.length) {
-                const fallbackMin = new Date(2024, 0, 1).getTime();
-                const fallbackMax = cutoffDate
-                    ? toDisplayTimestamp(cutoffDate.slice(5, 10))
-                    : new Date(2024, 11, 31).getTime();
-                return { cutoffDate, minTs: fallbackMin, maxTs: fallbackMax, chartRows: [] };
+                return {
+                    cutoffDate,
+                    minTs: new Date(2024, 0, 1).getTime(),
+                    maxTs: new Date(2024, 11, 31).getTime(),
+                    chartRows: []
+                };
             }
 
-            // 趋势图截止日期统一取当前日期前最后一个交易日（若该标准周期已先于交割月前完结，则取该周期最后交易日）
-            const latestRow = eligibleRows[eligibleRows.length - 1];
-            const maxTs = latestRow.displayTs;
-            let minTs;
-
+            // 趋势图横轴右边界取到当年最后一天 (12-31) 或对应标准合约周期交割月前最后一天，保留历史年份完整走势
+            let minTs, maxTs;
             if (currentMode === "standard") {
                 minTs = Infinity;
+                maxTs = -Infinity;
                 for (let i = 0; i < eligibleRows.length; i++) {
                     const ts = eligibleRows[i].displayTs;
-                    if (ts <= maxTs && ts < minTs) minTs = ts;
+                    if (ts < minTs) minTs = ts;
+                    if (ts > maxTs) maxTs = ts;
                 }
-                if (!Number.isFinite(minTs)) minTs = maxTs;
+                if (currentBasePair === "01-05") {
+                    const yearEndTs = new Date(2023, 11, 31).getTime();
+                    if (yearEndTs > maxTs) maxTs = yearEndTs;
+                }
             } else {
                 minTs = new Date(2024, 0, 1).getTime();
+                maxTs = new Date(2024, 11, 31).getTime();
             }
 
             const chartRows = eligibleRows.filter(r => r.displayTs >= minTs && r.displayTs <= maxTs);

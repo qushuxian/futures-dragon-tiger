@@ -163,6 +163,34 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
     cur.execute("CREATE INDEX IF NOT EXISTS idx_wh_query ON warehouse_details (trade_date, variety);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_wh_name ON warehouse_details (wh_name, trade_date);")
 
+    # 7. 郑商所重点品种 01/05/09 合约日行情表 (纯碱 SA / 玻璃 FG 跨期价差底座)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS czce_daily_bars (
+        trade_date TEXT NOT NULL,
+        variety TEXT NOT NULL,            -- 'SA' / 'FG'
+        contract_raw TEXT NOT NULL,       -- 郑商所原始 3 位合约码，如 'SA701'
+        contract_std TEXT NOT NULL,       -- 标准化 4 位合约码，如 'SA2701'
+        delivery_month TEXT NOT NULL,     -- '01' / '05' / '09'
+        prev_settle REAL,
+        open REAL,
+        high REAL,
+        low REAL,
+        close REAL,
+        settle REAL,
+        chg_close REAL,
+        chg_settle REAL,
+        volume INTEGER DEFAULT 0,
+        open_interest INTEGER DEFAULT 0,
+        oi_change INTEGER DEFAULT 0,
+        turnover REAL DEFAULT 0.0,
+        delivery_settle REAL,
+        data_source TEXT DEFAULT 'czce_official',
+        PRIMARY KEY (trade_date, contract_std) ON CONFLICT REPLACE
+    );
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_czce_bars_var_date ON czce_daily_bars (variety, trade_date);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_czce_bars_var_month ON czce_daily_bars (variety, delivery_month, trade_date);")
+
     conn.commit()
     conn.close()
 
@@ -495,6 +523,190 @@ def save_position_day(
     if should_close:
         conn.commit()
         conn.close()
+
+
+def save_czce_daily_bars(
+    records: List[Dict[str, Any]],
+    conn: Optional[sqlite3.Connection] = None,
+    db_path: str = DEFAULT_DB_PATH
+) -> int:
+    """批量持久化郑商所纯碱/玻璃 01/05/09 合约日行情数据，并同步更新交易日历与任务状态"""
+    if not records:
+        return 0
+
+    should_close = False
+    if conn is None:
+        conn = get_db_connection(db_path)
+        should_close = True
+
+    cur = conn.cursor()
+
+    trade_dates = sorted({r["trade_date"] for r in records})
+    cur.executemany("""
+    INSERT INTO trade_calendar (trade_date, is_trading_day)
+    VALUES (?, 1)
+    ON CONFLICT(trade_date) DO UPDATE SET is_trading_day = 1;
+    """, [(d,) for d in trade_dates])
+
+    rows_to_insert = []
+    counts_by_key: Dict[Tuple[str, str], int] = {}
+    for r in records:
+        rows_to_insert.append((
+            r["trade_date"],
+            r["variety"],
+            r["contract_raw"],
+            r["contract_std"],
+            r["delivery_month"],
+            r.get("prev_settle"),
+            r.get("open"),
+            r.get("high"),
+            r.get("low"),
+            r.get("close"),
+            r.get("settle"),
+            r.get("chg_close"),
+            r.get("chg_settle"),
+            r.get("volume", 0),
+            r.get("open_interest", 0),
+            r.get("oi_change", 0),
+            r.get("turnover", 0.0),
+            r.get("delivery_settle"),
+            r.get("data_source", "czce_official"),
+        ))
+        key = (r["trade_date"], r["variety"])
+        counts_by_key[key] = counts_by_key.get(key, 0) + 1
+
+    cur.executemany("""
+    INSERT INTO czce_daily_bars (
+        trade_date, variety, contract_raw, contract_std, delivery_month,
+        prev_settle, open, high, low, close, settle, chg_close, chg_settle,
+        volume, open_interest, oi_change, turnover, delivery_settle, data_source
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(trade_date, contract_std) DO UPDATE SET
+        contract_raw = excluded.contract_raw,
+        delivery_month = excluded.delivery_month,
+        prev_settle = excluded.prev_settle,
+        open = excluded.open,
+        high = excluded.high,
+        low = excluded.low,
+        close = excluded.close,
+        settle = excluded.settle,
+        chg_close = excluded.chg_close,
+        chg_settle = excluded.chg_settle,
+        volume = excluded.volume,
+        open_interest = excluded.open_interest,
+        oi_change = excluded.oi_change,
+        turnover = excluded.turnover,
+        delivery_settle = excluded.delivery_settle,
+        data_source = excluded.data_source;
+    """, rows_to_insert)
+
+    for (t_date, var), cnt in counts_by_key.items():
+        status = "SUCCESS" if cnt >= 3 else "PARTIAL"
+        update_task_status(t_date, var, "daily_bar", status, record_count=cnt, conn=conn)
+
+    if should_close:
+        conn.commit()
+        conn.close()
+
+    return len(rows_to_insert)
+
+
+def export_czce_spreads_to_frontend(
+    output_json_path: Optional[str] = None,
+    output_js_path: Optional[str] = None,
+    varieties: Tuple[str, ...] = ("SA", "FG"),
+    db_path: str = DEFAULT_DB_PATH
+) -> Dict[str, Any]:
+    """从 SQLite 查询并导出纯碱/玻璃 01/05/09 合约日行情，供跨期价差大屏离线与在线渲染"""
+    if not output_json_path:
+        output_json_path = os.path.join(DATA_DIR, "czce_spread_bars.json")
+    if not output_js_path:
+        output_js_path = os.path.join(DATA_DIR, "czce_spread_bars.data.js")
+
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+
+    placeholders = ",".join(["?"] * len(varieties))
+    cur.execute(f"""
+        SELECT trade_date, variety, contract_std, delivery_month,
+               open, high, low, close, settle, prev_settle, volume, open_interest
+        FROM czce_daily_bars
+        WHERE variety IN ({placeholders})
+          AND delivery_month IN ('01', '05', '09')
+        ORDER BY trade_date ASC, variety ASC, delivery_month ASC;
+    """, list(varieties))
+    rows = cur.fetchall()
+    conn.close()
+
+    all_dates_set = set()
+    years_set = set()
+    commodities_out: Dict[str, Any] = {}
+
+    for code in varieties:
+        meta = VARIETY_META.get(code, {})
+        commodities_out[code] = {
+            "code": code,
+            "name": meta.get("name", code),
+            "desc": meta.get("desc", ""),
+            "exchange": meta.get("exchange", "郑州商品交易所 (CZCE)"),
+            "unit": "元/吨",
+            "ton_per_hand": meta.get("ton_per_hand", 20),
+            "dates": [],
+            "daily": {}
+        }
+
+    for r in rows:
+        t_date = r["trade_date"]
+        var = r["variety"]
+        dm = r["delivery_month"]
+        all_dates_set.add(t_date)
+        years_set.add(int(t_date[:4]))
+
+        day_bucket = commodities_out[var]["daily"].setdefault(t_date, {})
+        day_bucket[dm] = {
+            "c": r["contract_std"],
+            "o": r["open"],
+            "h": r["high"],
+            "l": r["low"],
+            "cl": r["close"],
+            "s": r["settle"],
+            "ps": r["prev_settle"],
+            "v": r["volume"] or 0,
+            "oi": r["open_interest"] or 0
+        }
+
+    for code in varieties:
+        commodities_out[code]["dates"] = sorted(commodities_out[code]["daily"].keys())
+
+    all_dates = sorted(all_dates_set)
+    result: Dict[str, Any] = {
+        "sync_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "latest_trade_date": all_dates[-1] if all_dates else "",
+        "first_trade_date": all_dates[0] if all_dates else "",
+        "total_trade_days": len(all_dates),
+        "years": sorted(years_set),
+        "commodities": commodities_out
+    }
+
+    os.makedirs(os.path.dirname(output_json_path), exist_ok=True)
+    tmp_json = output_json_path + ".tmp"
+    with open(tmp_json, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, separators=(",", ":"))
+    os.replace(tmp_json, output_json_path)
+
+    tmp_js = output_js_path + ".tmp"
+    js_header = (
+        "// 郑商所纯碱(SA)/玻璃(FG) 01/05/09 合约日行情离线数据垫片 (SQLite 物化导出引擎)\n"
+        f"// 同步生成时间: {result['sync_time']}\n"
+        "window.__CZCE_SPREAD_DATA__ = "
+    )
+    with open(tmp_js, "w", encoding="utf-8") as f:
+        f.write(js_header)
+        json.dump(result, f, ensure_ascii=False, separators=(",", ":"))
+        f.write(";\n")
+    os.replace(tmp_js, output_js_path)
+
+    return result
 
 
 # =========================================================================

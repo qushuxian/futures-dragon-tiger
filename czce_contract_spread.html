@@ -1,0 +1,2299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>郑商所纯碱/玻璃 01·05·09 合约季节性价差看板</title>
+    <!-- Apache ECharts 金融时序图表库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <!-- 引入离线数据垫片 (保障双击与 file:// 协议毫秒级打开) -->
+    <script src="./data/czce_spread_bars.data.js"></script>
+    <style>
+        :root {
+            --bg-page: #0B0F19;
+            --bg-navbar: #111827;
+            --bg-card: #1F2937;
+            --bg-card-header: #1E293B;
+            --bg-subtle: #242E3D;
+            --border-color: #374151;
+            --border-light: #4B5563;
+            --text-main: #F9FAFB;
+            --text-muted: #9CA3AF;
+            --text-dim: #6B7280;
+            --color-primary: #3B82F6;
+            --color-primary-hover: #2563EB;
+            --color-primary-bg: rgba(59, 130, 246, 0.15);
+            --color-up: #EF4444;
+            --color-up-bg: rgba(239, 68, 68, 0.12);
+            --color-down: #10B981;
+            --color-down-bg: rgba(16, 185, 129, 0.12);
+            --color-gold: #F59E0B;
+            --color-gold-bg: rgba(245, 158, 11, 0.12);
+            --color-purple: #A855F7;
+            --color-purple-bg: rgba(168, 85, 247, 0.14);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        body.theme-light {
+            --bg-page: #F3F4F6;
+            --bg-navbar: #FFFFFF;
+            --bg-card: #FFFFFF;
+            --bg-card-header: #F9FAFB;
+            --bg-subtle: #F3F4F6;
+            --border-color: #E5E7EB;
+            --border-light: #D1D5DB;
+            --text-main: #111827;
+            --text-muted: #4B5563;
+            --text-dim: #9CA3AF;
+            --color-primary: #2563EB;
+            --color-primary-hover: #1D4ED8;
+            --color-primary-bg: #EFF6FF;
+            --color-up: #DC2626;
+            --color-up-bg: #FEF2F2;
+            --color-down: #059669;
+            --color-down-bg: #ECFDF5;
+            --color-gold: #D97706;
+            --color-gold-bg: #FFFBEB;
+            --color-purple: #7C3AED;
+            --color-purple-bg: #F5F3FF;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5;
+        }
+
+        /* 顶部导航栏 (固定 48px 高度，与龙虎榜/仓单页严格统一) */
+        .top-navbar {
+            background-color: var(--bg-navbar);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 16px;
+            height: 48px;
+            min-height: 48px;
+            max-height: 48px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: nowrap;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .nav-left-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: nowrap;
+            min-width: 0;
+            flex: 1;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .nav-left-group::-webkit-scrollbar {
+            display: none;
+        }
+
+        .page-nav-tabs {
+            display: inline-flex;
+            background-color: var(--bg-subtle);
+            padding: 2.5px 3px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            gap: 2px;
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        .page-tab-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3.5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            color: var(--text-muted);
+            transition: all 0.16s ease;
+            white-space: nowrap;
+        }
+
+        .page-tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .page-tab-btn.active {
+            background-color: var(--bg-card);
+            color: var(--color-primary);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .commodity-pills {
+            display: inline-flex;
+            background-color: var(--bg-subtle);
+            padding: 2.5px 3px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            gap: 2px;
+            flex-wrap: nowrap;
+            user-select: none;
+        }
+
+        .comm-pill {
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.16s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .comm-pill:hover {
+            color: var(--text-main);
+        }
+
+        .comm-pill.active {
+            background-color: var(--color-primary);
+            color: #FFFFFF;
+            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.4);
+        }
+
+        .comm-pill .pill-tag {
+            font-size: 10px;
+            opacity: 0.85;
+            font-weight: 400;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .btn-theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 28px;
+            padding: 0;
+            font-size: 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-main);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .btn-theme-toggle:hover {
+            background: var(--bg-card-header);
+            border-color: var(--border-light);
+            transform: scale(1.08);
+        }
+
+        .btn-theme-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* 主容器 */
+        .main-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* 导航栏内联价差控制区 */
+        .nav-divider {
+            width: 1px;
+            height: 18px;
+            background-color: var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .nav-spread-controls {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+            flex-shrink: 0;
+        }
+
+        .segmented-group {
+            display: inline-flex;
+            background-color: var(--bg-subtle);
+            padding: 2.5px 3px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            gap: 2px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .seg-btn {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11.5px;
+            font-weight: 600;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .seg-btn:hover {
+            color: var(--text-main);
+        }
+
+        .seg-btn.active {
+            background-color: var(--color-primary);
+            color: #FFFFFF;
+            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.35);
+        }
+
+        .drawer-control-block {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .drawer-control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .drawer-control-label {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        /* KPI 卡片网格 */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 1120px) {
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .kpi-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 16px 18px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background-color: var(--color-primary);
+        }
+
+        .kpi-card.card-up::before {
+            background-color: var(--color-up);
+        }
+
+        .kpi-card.card-down::before {
+            background-color: var(--color-down);
+        }
+
+        .kpi-card.card-gold::before {
+            background-color: var(--color-gold);
+        }
+
+        .kpi-card.card-purple::before {
+            background-color: var(--color-purple);
+        }
+
+        .kpi-title {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .kpi-tag {
+            font-size: 10.5px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: var(--bg-subtle);
+            color: var(--text-muted);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .kpi-value-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .kpi-main-val {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .kpi-unit {
+            font-size: 12.5px;
+            color: var(--text-muted);
+        }
+
+        .kpi-sub-row {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .badge-diff {
+            display: inline-flex;
+            align-items: center;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 11.5px;
+        }
+
+        .badge-diff.up {
+            background-color: var(--color-up-bg);
+            color: var(--color-up);
+        }
+
+        .badge-diff.down {
+            background-color: var(--color-down-bg);
+            color: var(--color-down);
+        }
+
+        .badge-diff.zero {
+            background-color: var(--bg-subtle);
+            color: var(--text-muted);
+        }
+
+        .badge-diff.warn {
+            background-color: var(--color-gold-bg);
+            color: var(--color-gold);
+        }
+
+        /* 主图表卡片 */
+        .chart-panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .panel-title {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .panel-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .echarts-container {
+            width: 100%;
+            height: 460px;
+            position: relative;
+        }
+
+        .echarts-fallback {
+            display: none;
+            position: absolute;
+            inset: 0;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 20px;
+            background: var(--bg-subtle);
+            border-radius: var(--radius-md);
+        }
+
+        /* 下层明细表格 */
+        .table-panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .table-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .table-filters {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .year-select {
+            padding: 6px 10px;
+            background-color: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-main);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .year-select:focus {
+            border-color: var(--color-primary);
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input {
+            padding: 6px 12px 6px 28px;
+            background-color: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-main);
+            outline: none;
+            width: 210px;
+        }
+
+        .search-input:focus {
+            border-color: var(--color-primary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .data-table-wrapper {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        .data-table th {
+            background-color: var(--bg-card-header);
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .data-table th:hover {
+            color: var(--text-main);
+        }
+
+        .data-table th.col-active {
+            color: var(--color-primary);
+        }
+
+        .data-table td {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .data-table tr:hover td {
+            background-color: var(--bg-subtle);
+        }
+
+        .col-num {
+            text-align: right;
+        }
+
+        .val-up {
+            color: var(--color-up);
+            font-weight: 600;
+        }
+
+        .val-down {
+            color: var(--color-down);
+            font-weight: 600;
+        }
+
+        .val-zero {
+            color: var(--text-dim);
+        }
+
+        .pair-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .span-tag {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .span-tag.m4 {
+            background-color: var(--color-primary-bg);
+            color: var(--color-primary);
+        }
+
+        .span-tag.m8 {
+            background-color: var(--color-gold-bg);
+            color: var(--color-gold);
+        }
+
+        .table-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .btn-load-more {
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-subtle);
+            color: var(--text-main);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn-load-more:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        footer {
+            text-align: center;
+            padding: 16px;
+            font-size: 12px;
+            color: var(--text-dim);
+            border-top: 1px solid var(--border-color);
+            margin-top: auto;
+        }
+
+        /* ====== 移动端汉堡菜单 & 侧滑抽屉 ====== */
+        .hamburger-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--text-main);
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .hamburger-btn:hover {
+            background: var(--bg-card-header);
+        }
+
+        .hamburger-btn:active {
+            transform: scale(0.92);
+        }
+
+        .hamburger-icon {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 16px;
+        }
+
+        .hamburger-icon span {
+            display: block;
+            height: 2px;
+            width: 100%;
+            background-color: var(--text-main);
+            border-radius: 1px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .hamburger-btn.active .hamburger-icon span:nth-child(1) {
+            transform: translateY(6px) rotate(45deg);
+        }
+
+        .hamburger-btn.active .hamburger-icon span:nth-child(2) {
+            opacity: 0;
+            transform: scaleX(0);
+        }
+
+        .hamburger-btn.active .hamburger-icon span:nth-child(3) {
+            transform: translateY(-6px) rotate(-45deg);
+        }
+
+        .mobile-page-title {
+            display: none;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+
+        .drawer-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .drawer-backdrop.visible {
+            display: block;
+            opacity: 1;
+        }
+
+        .drawer-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            max-width: 80vw;
+            height: 100vh;
+            height: 100dvh;
+            background-color: var(--bg-navbar);
+            border-right: 1px solid var(--border-color);
+            z-index: 210;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .drawer-panel.open {
+            transform: translateX(0);
+        }
+
+        .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .drawer-header-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .drawer-close-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .drawer-close-btn:hover {
+            color: var(--text-main);
+            background: var(--bg-card-header);
+        }
+
+        .drawer-section {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .drawer-section:last-child {
+            border-bottom: none;
+        }
+
+        .drawer-section-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .drawer-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: all 0.15s ease;
+            margin-bottom: 4px;
+        }
+
+        .drawer-nav-link:hover {
+            background: var(--bg-subtle);
+            color: var(--text-main);
+        }
+
+        .drawer-nav-link.active {
+            background: var(--color-primary-bg);
+            color: var(--color-primary);
+        }
+
+        .drawer-nav-link .link-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .drawer-pills-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .drawer-comm-pill {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 9px 8px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .drawer-comm-pill:hover {
+            color: var(--text-main);
+            border-color: var(--border-light);
+        }
+
+        .drawer-comm-pill.active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: #FFFFFF;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);
+        }
+
+        .drawer-comm-pill .pill-code {
+            font-size: 10px;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        @media (max-width: 768px) {
+            .hamburger-btn {
+                display: inline-flex;
+            }
+
+            .mobile-page-title {
+                display: block;
+            }
+
+            .nav-left-group .page-nav-tabs {
+                display: none;
+            }
+
+            .nav-left-group .commodity-pills {
+                display: none;
+            }
+
+            .nav-left-group .nav-divider,
+            .nav-left-group .nav-spread-controls {
+                display: none;
+            }
+
+            .top-navbar {
+                padding: 0 12px;
+                gap: 8px;
+            }
+
+            .nav-left-group {
+                gap: 8px;
+                min-width: 0;
+                flex: 1;
+            }
+
+            .main-container {
+                padding: 12px;
+                gap: 14px;
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .kpi-card {
+                padding: 12px 14px;
+            }
+
+            .kpi-main-val {
+                font-size: 21px;
+            }
+
+            .echarts-container {
+                height: 360px;
+            }
+
+            .search-input {
+                width: 160px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .echarts-container {
+                height: 320px;
+            }
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+
+    <!-- 侧滑抽屉遮罩 -->
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+
+    <!-- 侧滑抽屉面板 -->
+    <nav class="drawer-panel" id="drawer-panel">
+        <div class="drawer-header">
+            <span class="drawer-header-title">📋 导航菜单</span>
+            <button class="drawer-close-btn" id="drawer-close" title="关闭菜单">✕</button>
+        </div>
+        <div class="drawer-section">
+            <div class="drawer-section-label">看板导航</div>
+            <a href="coking_coal_dragon_tiger.html" class="drawer-nav-link">
+                <span class="link-icon">📊</span> 席位龙虎榜
+            </a>
+            <a href="coking_coal_receipt.html" class="drawer-nav-link">
+                <span class="link-icon">🏭</span> 仓单与库存
+            </a>
+            <a href="czce_contract_spread.html" class="drawer-nav-link active">
+                <span class="link-icon">📈</span> 合约价差
+            </a>
+            <a href="https://qushuxian.github.io/mongolian-coal-auction/" target="_blank" rel="noopener noreferrer"
+                class="drawer-nav-link">
+                <span class="link-icon">🇲🇳</span> 蒙古国拍卖数据
+            </a>
+        </div>
+        <div class="drawer-section">
+            <div class="drawer-section-label">品种切换</div>
+            <div class="drawer-pills-grid" id="drawer-commodity-pills"></div>
+        </div>
+        <div class="drawer-section">
+            <div class="drawer-section-label">价差筛选</div>
+            <div class="drawer-control-block">
+                <div class="drawer-control-row">
+                    <span class="drawer-control-label">合约价差</span>
+                    <div class="segmented-group">
+                        <button type="button" class="seg-btn active" data-pair="01-05">01 - 05</button>
+                        <button type="button" class="seg-btn" data-pair="05-09">05 - 09</button>
+                        <button type="button" class="seg-btn" data-pair="09-01">09 - 01</button>
+                    </div>
+                </div>
+                <div class="drawer-control-row">
+                    <span class="drawer-control-label">价格口径</span>
+                    <div class="segmented-group">
+                        <button type="button" class="seg-btn active" data-price="cl">收盘</button>
+                        <button type="button" class="seg-btn" data-price="o">开盘</button>
+                        <button type="button" class="seg-btn" data-price="h">最高</button>
+                        <button type="button" class="seg-btn" data-price="l">最低</button>
+                    </div>
+                </div>
+                <div class="drawer-control-row">
+                    <span class="drawer-control-label">跨期口径</span>
+                    <div class="segmented-group">
+                        <button type="button" class="seg-btn active" data-mode="standard">标准4月跨期</button>
+                        <button type="button" class="seg-btn" data-mode="full">全年活跃对比</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 顶部固定导航栏 -->
+    <header class="top-navbar">
+        <div class="nav-left-group">
+            <button class="hamburger-btn" id="hamburger-btn" title="打开导航菜单">
+                <div class="hamburger-icon">
+                    <span></span><span></span><span></span>
+                </div>
+            </button>
+            <span class="mobile-page-title">📈 合约价差</span>
+
+            <div class="page-nav-tabs">
+                <a href="coking_coal_dragon_tiger.html" class="page-tab-btn" title="直达期货各在交易合约主力席位成交持仓排名">📊 席位龙虎榜</a>
+                <a href="coking_coal_receipt.html" class="page-tab-btn" title="直达各大指定交割仓库仓单日报与累库去库全景">🏭 仓单与库存</a>
+                <a href="czce_contract_spread.html" class="page-tab-btn active"
+                    title="当前：郑商所纯碱/玻璃 01·05·09 跨期合约季节性价差">📈 合约价差</a>
+                <a href="https://qushuxian.github.io/mongolian-coal-auction/" target="_blank" rel="noopener noreferrer"
+                    class="page-tab-btn" title="直达蒙古国煤炭电子竞价拍卖数据全景看板">🇲🇳 蒙古国拍卖数据</a>
+            </div>
+
+            <div class="commodity-pills" id="commodity-pills"></div>
+
+            <span class="nav-divider" aria-hidden="true"></span>
+
+            <!-- 合约对 + 价格口径 + 跨期口径（合并至顶部导航栏） -->
+            <div class="nav-spread-controls">
+                <div class="segmented-group" id="pair-buttons" title="选择合约价差组合">
+                    <button type="button" class="seg-btn active" data-pair="01-05">01 - 05</button>
+                    <button type="button" class="seg-btn" data-pair="05-09">05 - 09</button>
+                    <button type="button" class="seg-btn" data-pair="09-01">09 - 01</button>
+                </div>
+
+                <div class="segmented-group" id="price-buttons" title="选择价差计算价格口径">
+                    <button type="button" class="seg-btn active" data-price="cl">收盘价</button>
+                    <button type="button" class="seg-btn" data-price="o">开盘价</button>
+                    <button type="button" class="seg-btn" data-price="h">最高价</button>
+                    <button type="button" class="seg-btn" data-price="l">最低价</button>
+                </div>
+
+                <div class="segmented-group" id="mode-buttons" title="选择跨期对齐口径">
+                    <button type="button" class="seg-btn active" data-mode="standard"
+                        title="按真实合约周期连续对齐，截止至近月交割月前最后一个交易日（01-05: 05中~12底、05-09: 09中~次年04底、09-01: 01中~08底）">标准4月</button>
+                    <button type="button" class="seg-btn" data-mode="full"
+                        title="展示全年每日活跃合约之差，并在合约换月处自动断线防止假跳空">全年活跃</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-actions">
+            <button class="btn-theme-toggle" id="btn-theme" title="切换深浅主题">🌙</button>
+        </div>
+    </header>
+
+    <!-- 主展示区 -->
+    <main class="main-container">
+        <!-- KPI 核心指标卡 -->
+        <section class="kpi-grid">
+            <div class="kpi-card" id="kpi-latest-card">
+                <div class="kpi-title">
+                    <span id="kpi-latest-title">最新合约价差</span>
+                    <span class="kpi-tag" id="kpi-latest-pair">--</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-main-val" id="kpi-latest-val">--</span>
+                    <span class="kpi-unit">元/吨</span>
+                </div>
+                <div class="kpi-sub-row">
+                    <span id="kpi-latest-diff-badge" class="badge-diff zero">--</span>
+                    <span id="kpi-latest-date">--</span>
+                </div>
+            </div>
+
+            <div class="kpi-card card-gold">
+                <div class="kpi-title">
+                    <span id="kpi-ytd-title">当年区间极值</span>
+                    <span class="kpi-tag" id="kpi-ytd-count">--</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-main-val" id="kpi-ytd-range" style="font-size: 22px;">--</span>
+                    <span class="kpi-unit">元/吨</span>
+                </div>
+                <div class="kpi-sub-row">
+                    <span id="kpi-ytd-dates">--</span>
+                </div>
+            </div>
+
+            <div class="kpi-card card-purple">
+                <div class="kpi-title">
+                    <span>近 4 年全周期极值</span>
+                    <span class="kpi-tag" id="kpi-all-span">2023–2026</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-main-val" id="kpi-all-range" style="font-size: 22px;">--</span>
+                    <span class="kpi-unit">元/吨</span>
+                </div>
+                <div class="kpi-sub-row">
+                    <span id="kpi-all-dates">--</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>历史同期均值与分位</span>
+                    <span class="kpi-tag" id="kpi-seasonal-window">同期 ±5日</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-main-val" id="kpi-seasonal-mean">--</span>
+                    <span class="kpi-unit">元/吨</span>
+                </div>
+                <div class="kpi-sub-row">
+                    <span id="kpi-percentile-badge" class="badge-diff zero">--</span>
+                    <span id="kpi-seasonal-desc">对比近4年历史区间</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 季节性价差叠加折线图 -->
+        <section class="chart-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <span id="chart-panel-title">玻璃 (FG) 01 - 05 收盘价差季节性对比</span>
+                </div>
+                <div class="segmented-group" id="year-scope-buttons" title="切换趋势图默认展示年份">
+                    <button type="button" class="seg-btn active" data-year-scope="latest">仅当前年</button>
+                    <button type="button" class="seg-btn" data-year-scope="all">全部年份</button>
+                </div>
+            </div>
+            <div class="echarts-container">
+                <div id="spread-chart" style="width: 100%; height: 100%;"></div>
+                <div class="echarts-fallback" id="echarts-fallback">
+                    未加载到 ECharts 图表库（当前可能处于完全无外网环境）。下方明细数据表仍可正常查阅与筛选。
+                </div>
+            </div>
+        </section>
+
+        <!-- 明细流水表 -->
+        <section class="table-panel">
+            <div class="table-toolbar">
+                <div class="panel-title">
+                    <span id="table-panel-title">玻璃 (FG) 01 - 05 每日合约价差明细</span>
+                    <span class="panel-subtitle" id="table-row-count">共 0 条</span>
+                </div>
+                <div class="table-filters">
+                    <select class="year-select" id="table-year-filter" title="按年份筛选">
+                        <option value="ALL">全部年份</option>
+                    </select>
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="search-input" id="table-search" placeholder="搜索日期(如 05-20)或合约...">
+                    </div>
+                </div>
+            </div>
+            <div class="data-table-wrapper">
+                <table class="data-table" id="spread-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="date">交易日期 ⬍</th>
+                            <th data-sort="pairKey">跨期合约对 ⬍</th>
+                            <th data-sort="priceA" class="col-num" id="th-price-a">腿1价格 ⬍</th>
+                            <th data-sort="priceB" class="col-num" id="th-price-b">腿2价格 ⬍</th>
+                            <th data-sort="spreadO" class="col-num" data-price-col="o">开盘价差 ⬍</th>
+                            <th data-sort="spreadCl" class="col-num" data-price-col="cl">收盘价差 ⬍</th>
+                            <th data-sort="spreadH" class="col-num" data-price-col="h">最高价差 ⬍</th>
+                            <th data-sort="spreadL" class="col-num" data-price-col="l">最低价差 ⬍</th>
+                            <th data-sort="dailyDiff" class="col-num">较上日变化 ⬍</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spread-table-body"></tbody>
+                </table>
+            </div>
+            <div class="table-footer">
+                <span id="table-footer-info">--</span>
+                <button type="button" class="btn-load-more" id="btn-toggle-all" style="display: none;">展开全部记录</button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        郑州商品交易所 纯碱 (SA) / 玻璃 (FG) 01·05·09 合约季节性价差监控大屏 · 数据持久化于 SQLite (data/coking_coal.db) · 支持纯静态离线双击打开
+    </footer>
+
+    <script>
+        // 全局配置
+        const BASE_PAIRS = {
+            "01-05": { a: "01", b: "05" },
+            "05-09": { a: "05", b: "09" },
+            "09-01": { a: "09", b: "01" }
+        };
+
+        const PRICE_META = {
+            cl: { label: "收盘价", short: "收盘" },
+            o: { label: "开盘价", short: "开盘" },
+            h: { label: "最高价", short: "最高" },
+            l: { label: "最低价", short: "最低" }
+        };
+
+        const YEAR_PALETTE = [
+            "#EF4444", // 最新年份 (红)
+            "#3B82F6", // 前1年 (蓝)
+            "#10B981", // 前2年 (绿)
+            "#F59E0B", // 前3年 (琥珀)
+            "#A855F7", // 更早 (紫)
+            "#06B6D4", // (青)
+            "#EC4899"  // (粉)
+        ];
+
+        // 全局状态
+        let dataset = (typeof window !== "undefined" && window.__CZCE_SPREAD_DATA__) ? window.__CZCE_SPREAD_DATA__ : null;
+        let currentCommodity = "FG";
+        let currentBasePair = "01-05";
+        let currentPriceField = "cl";
+        let currentMode = "standard"; // "standard" | "full"
+
+        let tableYearFilter = "ALL";
+        let tableSearch = "";
+        let sortField = "date";
+        let sortAsc = false;
+        let showAllRows = false;
+        const DEFAULT_ROW_LIMIT = 80;
+
+        let chartInstance = null;
+        let selectedYearsMap = {};
+        let yearDisplayMode = "latest"; // "latest" | "all" | "custom"
+        let currentChartYears = [];
+        let currentComputedRows = [];
+
+        window.addEventListener("DOMContentLoaded", () => {
+            initTheme();
+            initEventHandlers();
+            loadData();
+        });
+
+        async function loadData() {
+            if (window.location.protocol !== "file:" || !dataset) {
+                try {
+                    const res = await fetch("./data/czce_spread_bars.json?_t=" + Date.now(), { cache: "no-store" });
+                    if (res.ok) {
+                        const fresh = await res.json();
+                        if (fresh && fresh.commodities) {
+                            dataset = fresh;
+                        }
+                    }
+                } catch (e) {
+                    console.warn("无法异步加载 JSON，使用离线垫片数据");
+                }
+            }
+
+            if (!dataset || !dataset.commodities) {
+                alert("未检测到合约价差数据，请先在终端运行：python3 modules/sync_czce_spread_bars.py");
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlCommodity = urlParams.get("commodity");
+            if (urlCommodity && dataset.commodities[urlCommodity.toUpperCase()]) {
+                currentCommodity = urlCommodity.toUpperCase();
+            } else if (!dataset.commodities[currentCommodity]) {
+                currentCommodity = Object.keys(dataset.commodities)[0];
+            }
+
+            renderCommodityPills();
+            populateYearFilter();
+            renderDashboard();
+        }
+
+        function getActiveLegs() {
+            const base = BASE_PAIRS[currentBasePair];
+            return { legA: base.a, legB: base.b };
+        }
+
+        function parseContractYM(contractStd) {
+            // SA2601 -> 2026 * 12 + 1
+            const m = String(contractStd || "").match(/(\d{2})(\d{2})$/);
+            if (!m) return null;
+            return (2000 + parseInt(m[1], 10)) * 12 + parseInt(m[2], 10);
+        }
+
+        function toDisplayTimestamp(mmdd) {
+            const parts = mmdd.split("-");
+            const month = parseInt(parts[0], 10);
+            const day = parseInt(parts[1], 10);
+            return new Date(2024, month - 1, day).getTime();
+        }
+
+        function formatMMDDFromTs(ts) {
+            const d = new Date(ts);
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return m + "-" + day;
+        }
+
+        function calcSpreadValue(barA, barB, field) {
+            if (!barA || !barB) return null;
+            const a = barA[field];
+            const b = barB[field];
+            if (a === null || a === undefined || b === null || b === undefined) return null;
+            if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+            return Math.round((a - b) * 100) / 100;
+        }
+
+        function formatSigned(val, decimals) {
+            if (val === null || val === undefined || !Number.isFinite(val)) return "--";
+            const d = typeof decimals === "number" ? decimals : (Number.isInteger(val) ? 0 : 1);
+            const absStr = Math.abs(val).toLocaleString("zh-CN", {
+                minimumFractionDigits: d,
+                maximumFractionDigits: d
+            });
+            if (val > 0) return "+" + absStr;
+            if (val < 0) return "-" + absStr;
+            return "0";
+        }
+
+        function formatPrice(val) {
+            if (val === null || val === undefined || !Number.isFinite(val)) return "--";
+            return val.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+        }
+
+        function buildSpreadRows(commData) {
+            const { legA, legB } = getActiveLegs();
+            const dates = commData.dates || [];
+            const daily = commData.daily || {};
+            const rows = [];
+
+            let prevSamePairSpread = null;
+            let prevPairKey = null;
+
+            for (let i = 0; i < dates.length; i++) {
+                const dateStr = dates[i];
+                const dayBucket = daily[dateStr];
+                if (!dayBucket) continue;
+
+                const barA = dayBucket[legA];
+                const barB = dayBucket[legB];
+                if (!barA || !barB) continue;
+
+                const ymA = parseContractYM(barA.c);
+                const ymB = parseContractYM(barB.c);
+                const year = parseInt(dateStr.slice(0, 4), 10);
+                const month = parseInt(dateStr.slice(5, 7), 10);
+                const day = parseInt(dateStr.slice(8, 10), 10);
+                const tradeYM = year * 12 + month;
+
+                const monthSpan = (ymA !== null && ymB !== null) ? Math.abs(ymB - ymA) : null;
+                const isStandard4m = (ymA !== null && ymB !== null && (ymB - ymA) === 4);
+                const inDeliveryMonth = (ymA !== null && tradeYM >= ymA);
+
+                // 标准4月模式：仅保留间隔4个月的真实近远合约对，且严格截止到近月交割月前的最后一个交易日
+                if (currentMode === "standard" && (!isStandard4m || inDeliveryMonth)) {
+                    continue;
+                }
+
+                const spreadSelected = calcSpreadValue(barA, barB, currentPriceField);
+                const spreadO = calcSpreadValue(barA, barB, "o");
+                const spreadCl = calcSpreadValue(barA, barB, "cl");
+                const spreadH = calcSpreadValue(barA, barB, "h");
+                const spreadL = calcSpreadValue(barA, barB, "l");
+
+                // 若当前口径缺失（如极少数 0 成交日无 OHLC），跳过主曲线点但避免脏值
+                if (spreadSelected === null) continue;
+
+                const pairKey = barA.c + " - " + barB.c;
+                let dailyDiff = null;
+                if (prevPairKey === pairKey && prevSamePairSpread !== null) {
+                    dailyDiff = Math.round((spreadSelected - prevSamePairSpread) * 100) / 100;
+                }
+                prevPairKey = pairKey;
+                prevSamePairSpread = spreadSelected;
+
+                const mmdd = dateStr.slice(5, 10);
+                const nearYear = ymA !== null ? Math.floor((ymA - 1) / 12) : year;
+                const seriesYear = (currentMode === "standard") ? nearYear : year;
+                // 参考闰年 2024；标准4月按 (交易年 - 近月交割年) 偏移，保证 05-09 跨年连续且兼容 02-29
+                const mappedYear = (currentMode === "standard") ? (2024 + (year - nearYear)) : 2024;
+                const displayTs = new Date(mappedYear, month - 1, day).getTime();
+
+                rows.push({
+                    date: dateStr,
+                    year: year,
+                    nearYear: nearYear,
+                    seriesYear: seriesYear,
+                    mmdd: mmdd,
+                    displayTs: displayTs,
+                    contractA: barA.c,
+                    contractB: barB.c,
+                    pairKey: pairKey,
+                    monthSpan: monthSpan,
+                    isStandard4m: isStandard4m,
+                    inDeliveryMonth: inDeliveryMonth,
+                    priceA: barA[currentPriceField],
+                    priceB: barB[currentPriceField],
+                    spread: spreadSelected,
+                    spreadO: spreadO,
+                    spreadCl: spreadCl,
+                    spreadH: spreadH,
+                    spreadL: spreadL,
+                    dailyDiff: dailyDiff,
+                    volA: barA.v || 0,
+                    volB: barB.v || 0
+                });
+            }
+
+            return rows;
+        }
+
+        function renderCommodityPills() {
+            const desktopBox = document.getElementById("commodity-pills");
+            const drawerBox = document.getElementById("drawer-commodity-pills");
+            desktopBox.innerHTML = "";
+            drawerBox.innerHTML = "";
+
+            const order = ["FG", "SA"];
+            const keys = order.filter(k => dataset.commodities[k]).concat(
+                Object.keys(dataset.commodities).filter(k => !order.includes(k))
+            );
+
+            keys.forEach(code => {
+                const c = dataset.commodities[code];
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "comm-pill" + (code === currentCommodity ? " active" : "");
+                btn.innerHTML = `${c.name} <span class="pill-tag">${code}</span>`;
+                btn.addEventListener("click", () => selectCommodity(code));
+                desktopBox.appendChild(btn);
+
+                const dBtn = document.createElement("button");
+                dBtn.type = "button";
+                dBtn.className = "drawer-comm-pill" + (code === currentCommodity ? " active" : "");
+                dBtn.innerHTML = `${c.name} <span class="pill-code">${code}</span>`;
+                dBtn.addEventListener("click", () => {
+                    selectCommodity(code);
+                    closeDrawer();
+                });
+                drawerBox.appendChild(dBtn);
+            });
+        }
+
+        function selectCommodity(code) {
+            if (code === currentCommodity) return;
+            currentCommodity = code;
+            showAllRows = false;
+            renderCommodityPills();
+            renderDashboard();
+        }
+
+        function populateYearFilter() {
+            const sel = document.getElementById("table-year-filter");
+            const years = (dataset.years || []).slice().sort((a, b) => b - a);
+            sel.innerHTML = '<option value="ALL">全部年份</option>';
+            years.forEach(y => {
+                const opt = document.createElement("option");
+                opt.value = String(y);
+                opt.textContent = y + "年";
+                sel.appendChild(opt);
+            });
+        }
+
+        function updateControlLabels() {
+            document.querySelectorAll(".seg-btn[data-pair]").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.pair === currentBasePair);
+            });
+
+            document.querySelectorAll(".seg-btn[data-price]").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.price === currentPriceField);
+            });
+
+            document.querySelectorAll(".seg-btn[data-mode]").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.mode === currentMode);
+            });
+        }
+
+        function getLastTradeDateBeforeToday(dates) {
+            const now = new Date();
+            const todayStr = now.getFullYear() + "-" +
+                String(now.getMonth() + 1).padStart(2, "0") + "-" +
+                String(now.getDate()).padStart(2, "0");
+            if (dates && dates.length) {
+                for (let i = dates.length - 1; i >= 0; i--) {
+                    if (dates[i] < todayStr) return dates[i];
+                }
+                return dates[dates.length - 1];
+            }
+            return (dataset && dataset.latest_trade_date) ? dataset.latest_trade_date : "";
+        }
+
+        function getChartWindow(rows, comm) {
+            const cutoffDate = getLastTradeDateBeforeToday(comm.dates || []);
+            const eligibleRows = cutoffDate ? rows.filter(r => r.date <= cutoffDate) : rows.slice();
+
+            if (!eligibleRows.length) {
+                const fallbackMin = new Date(2024, 0, 1).getTime();
+                const fallbackMax = cutoffDate
+                    ? toDisplayTimestamp(cutoffDate.slice(5, 10))
+                    : new Date(2024, 11, 31).getTime();
+                return { cutoffDate, minTs: fallbackMin, maxTs: fallbackMax, chartRows: [] };
+            }
+
+            // 趋势图截止日期统一取当前日期前最后一个交易日（若该标准周期已先于交割月前完结，则取该周期最后交易日）
+            const latestRow = eligibleRows[eligibleRows.length - 1];
+            const maxTs = latestRow.displayTs;
+            let minTs;
+
+            if (currentMode === "standard") {
+                minTs = Infinity;
+                for (let i = 0; i < eligibleRows.length; i++) {
+                    const ts = eligibleRows[i].displayTs;
+                    if (ts <= maxTs && ts < minTs) minTs = ts;
+                }
+                if (!Number.isFinite(minTs)) minTs = maxTs;
+            } else {
+                minTs = new Date(2024, 0, 1).getTime();
+            }
+
+            const chartRows = eligibleRows.filter(r => r.displayTs >= minTs && r.displayTs <= maxTs);
+            return { cutoffDate, minTs, maxTs, chartRows };
+        }
+
+        function renderDashboard() {
+            if (!dataset || !dataset.commodities || !dataset.commodities[currentCommodity]) return;
+
+            updateControlLabels();
+
+            const comm = dataset.commodities[currentCommodity];
+            const { legA, legB } = getActiveLegs();
+            const pairLabel = `${legA} - ${legB}`;
+            const priceLabel = PRICE_META[currentPriceField].label;
+
+            // 计算全部有效价差记录
+            currentComputedRows = buildSpreadRows(comm);
+
+            // 动态生成趋势图日期区间标题（与趋势图实际横轴起止完全一致）
+            const chartWin = getChartWindow(currentComputedRows, comm);
+            const startY = new Date(chartWin.minTs).getFullYear();
+            const endY = new Date(chartWin.maxTs).getFullYear();
+            const startStr = formatMMDDFromTs(chartWin.minTs);
+            const endStr = formatMMDDFromTs(chartWin.maxTs);
+            const rangeText = endY > startY
+                ? `${startStr} ~ 次年${endStr}`
+                : `${startStr} ~ ${endStr}`;
+
+            // 更新页面与面板标题
+            document.title = `${comm.name} (${comm.code}) ${pairLabel} 跨期价差看板`;
+
+            document.getElementById("chart-panel-title").textContent =
+                `${comm.name} (${comm.code}) ${pairLabel} ${priceLabel}差季节性对比 (${rangeText})`;
+            document.getElementById("table-panel-title").textContent =
+                `${comm.name} (${comm.code}) ${pairLabel} 每日合约价差明细`;
+
+            document.getElementById("th-price-a").textContent = `${legA}合约${PRICE_META[currentPriceField].short} ⬍`;
+            document.getElementById("th-price-b").textContent = `${legB}合约${PRICE_META[currentPriceField].short} ⬍`;
+
+            // 高亮当前选中价格口径表头
+            document.querySelectorAll("#spread-table th[data-price-col]").forEach(th => {
+                th.classList.toggle("col-active", th.dataset.priceCol === currentPriceField);
+            });
+
+            renderKPIs(currentComputedRows, comm);
+            renderChart(currentComputedRows, comm, chartWin);
+            renderTable();
+        }
+
+        function renderKPIs(rows, comm) {
+            const priceShort = PRICE_META[currentPriceField].short;
+            const latestCard = document.getElementById("kpi-latest-card");
+            const latestTitle = document.getElementById("kpi-latest-title");
+            const latestPairEl = document.getElementById("kpi-latest-pair");
+            const latestValEl = document.getElementById("kpi-latest-val");
+            const latestDiffBadge = document.getElementById("kpi-latest-diff-badge");
+            const latestDateEl = document.getElementById("kpi-latest-date");
+
+            latestTitle.textContent = `最新${priceShort}价差`;
+
+            if (!rows.length) {
+                latestPairEl.textContent = "--";
+                latestValEl.textContent = "--";
+                latestValEl.className = "kpi-main-val";
+                latestDiffBadge.textContent = "--";
+                latestDiffBadge.className = "badge-diff zero";
+                latestDateEl.textContent = "暂无数据";
+                document.getElementById("kpi-ytd-range").textContent = "--";
+                document.getElementById("kpi-all-range").textContent = "--";
+                document.getElementById("kpi-seasonal-mean").textContent = "--";
+                return;
+            }
+
+            const latest = rows[rows.length - 1];
+            const globalLatestDate = dataset.latest_trade_date || latest.date;
+            latestPairEl.textContent = latest.pairKey;
+            latestValEl.textContent = formatSigned(latest.spread);
+
+            latestCard.classList.remove("card-up", "card-down");
+            if (latest.spread > 0) {
+                latestValEl.className = "kpi-main-val val-up";
+                latestCard.classList.add("card-up");
+            } else if (latest.spread < 0) {
+                latestValEl.className = "kpi-main-val val-down";
+                latestCard.classList.add("card-down");
+            } else {
+                latestValEl.className = "kpi-main-val";
+            }
+
+            if (latest.dailyDiff !== null) {
+                latestDiffBadge.textContent = "较上日 " + formatSigned(latest.dailyDiff);
+                latestDiffBadge.className = "badge-diff " + (latest.dailyDiff > 0 ? "up" : (latest.dailyDiff < 0 ? "down" : "zero"));
+            } else {
+                latestDiffBadge.textContent = "换月首日";
+                latestDiffBadge.className = "badge-diff zero";
+            }
+
+            if (latest.date < globalLatestDate && currentMode === "standard") {
+                latestDateEl.innerHTML = `${latest.date} <span class="badge-diff warn">当前处于换月空窗</span>`;
+            } else {
+                latestDateEl.textContent = `交易日 ${latest.date}`;
+            }
+
+            // KPI 2: 最新合约周期 / 当年区间极值
+            const seriesYears = Array.from(new Set(rows.map(r => r.seriesYear))).sort((a, b) => a - b);
+            const targetSeriesYear = latest.seriesYear;
+            const ytdRows = rows.filter(r => r.seriesYear === targetSeriesYear);
+            document.getElementById("kpi-ytd-title").textContent =
+                currentMode === "standard" ? `${targetSeriesYear}年合约极值` : `${targetSeriesYear}年区间极值`;
+            document.getElementById("kpi-ytd-count").textContent = `${ytdRows.length} 个交易日`;
+            if (ytdRows.length) {
+                let yMax = ytdRows[0], yMin = ytdRows[0];
+                ytdRows.forEach(r => {
+                    if (r.spread > yMax.spread) yMax = r;
+                    if (r.spread < yMin.spread) yMin = r;
+                });
+                document.getElementById("kpi-ytd-range").textContent = `${formatSigned(yMin.spread)} ~ ${formatSigned(yMax.spread)}`;
+                document.getElementById("kpi-ytd-dates").textContent = `低点 ${yMin.mmdd} · 高点 ${yMax.mmdd}`;
+            } else {
+                document.getElementById("kpi-ytd-range").textContent = "--";
+                document.getElementById("kpi-ytd-dates").textContent = `${targetSeriesYear}年暂无有效记录`;
+            }
+
+            // KPI 3: 全周期极值
+            let allMax = rows[0], allMin = rows[0];
+            rows.forEach(r => {
+                if (r.spread > allMax.spread) allMax = r;
+                if (r.spread < allMin.spread) allMin = r;
+            });
+            const yearSpanText = seriesYears.length > 1
+                ? `${seriesYears[0]}–${seriesYears[seriesYears.length - 1]}`
+                : String(targetSeriesYear);
+            document.getElementById("kpi-all-span").textContent = `${yearSpanText} (${rows.length}日)`;
+            document.getElementById("kpi-all-range").textContent = `${formatSigned(allMin.spread)} ~ ${formatSigned(allMax.spread)}`;
+            document.getElementById("kpi-all-dates").textContent = `低点 ${allMin.date} · 高点 ${allMax.date}`;
+
+            // KPI 4: 历史同期均值（±5日）与全周期历史分位
+            const dayMs = 86400000;
+            const targetTs = latest.displayTs;
+            const sameWindow = rows.filter(r => {
+                const deltaDays = Math.abs(r.displayTs - targetTs) / dayMs;
+                const wrapDelta = Math.min(deltaDays, 366 - deltaDays);
+                return wrapDelta <= 5;
+            });
+
+            const meanVal = sameWindow.length
+                ? Math.round((sameWindow.reduce((s, r) => s + r.spread, 0) / sameWindow.length) * 10) / 10
+                : null;
+
+            const belowCount = rows.filter(r => r.spread <= latest.spread).length;
+            const pct = Math.round((belowCount / rows.length) * 100);
+
+            document.getElementById("kpi-seasonal-window").textContent = `${latest.mmdd} ±5日`;
+            document.getElementById("kpi-seasonal-mean").textContent = formatSigned(meanVal, 1);
+
+            const pctBadge = document.getElementById("kpi-percentile-badge");
+            pctBadge.textContent = `近4年分位 ${pct}%`;
+            if (pct >= 75) {
+                pctBadge.className = "badge-diff up";
+                document.getElementById("kpi-seasonal-desc").textContent = "处于历史偏高区间";
+            } else if (pct <= 25) {
+                pctBadge.className = "badge-diff down";
+                document.getElementById("kpi-seasonal-desc").textContent = "处于历史偏低区间";
+            } else {
+                pctBadge.className = "badge-diff zero";
+                document.getElementById("kpi-seasonal-desc").textContent = "处于历史中枢区间";
+            }
+        }
+
+        function updateYearScopeButtons() {
+            document.querySelectorAll(".seg-btn[data-year-scope]").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.yearScope === yearDisplayMode);
+            });
+        }
+
+        function syncSelectedYearsForChart(yearsAsc) {
+            currentChartYears = yearsAsc.slice();
+            const latestYear = yearsAsc.length ? yearsAsc[yearsAsc.length - 1] : null;
+            const nextMap = {};
+
+            if (yearDisplayMode === "all") {
+                yearsAsc.forEach(y => { nextMap[`${y}年`] = true; });
+            } else if (yearDisplayMode === "latest") {
+                yearsAsc.forEach(y => { nextMap[`${y}年`] = (y === latestYear); });
+            } else {
+                let anyVisible = false;
+                yearsAsc.forEach(y => {
+                    const key = `${y}年`;
+                    const isVis = (selectedYearsMap[key] !== false);
+                    nextMap[key] = isVis;
+                    if (isVis) anyVisible = true;
+                });
+                if (!anyVisible && latestYear !== null) {
+                    nextMap[`${latestYear}年`] = true;
+                }
+            }
+
+            selectedYearsMap = nextMap;
+            updateYearScopeButtons();
+            return nextMap;
+        }
+
+        function renderChart(rows, comm, precomputedWin) {
+            const chartDom = document.getElementById("spread-chart");
+            const fallbackEl = document.getElementById("echarts-fallback");
+
+            if (typeof echarts === "undefined") {
+                fallbackEl.style.display = "flex";
+                return;
+            }
+            fallbackEl.style.display = "none";
+
+            if (!chartInstance) {
+                chartInstance = echarts.init(chartDom);
+                chartInstance.on("legendselectchanged", (params) => {
+                    selectedYearsMap = Object.assign({}, params.selected);
+                    if (currentChartYears.length) {
+                        const latestName = `${currentChartYears[currentChartYears.length - 1]}年`;
+                        const allOn = currentChartYears.every(y => selectedYearsMap[`${y}年`] !== false);
+                        const onlyLatest = currentChartYears.every(y =>
+                            `${y}年` === latestName
+                                ? selectedYearsMap[`${y}年`] !== false
+                                : selectedYearsMap[`${y}年`] === false
+                        );
+                        yearDisplayMode = allOn ? "all" : (onlyLatest ? "latest" : "custom");
+                        updateYearScopeButtons();
+                    }
+                });
+                window.addEventListener("resize", () => {
+                    if (chartInstance) chartInstance.resize();
+                });
+            }
+
+            const isLight = document.body.classList.contains("theme-light");
+            const textMain = isLight ? "#111827" : "#F9FAFB";
+            const textMuted = isLight ? "#4B5563" : "#9CA3AF";
+            const splitLineColor = isLight ? "rgba(229, 231, 235, 0.9)" : "rgba(55, 65, 81, 0.55)";
+            const axisLineColor = isLight ? "#D1D5DB" : "#4B5563";
+            const tooltipBg = isLight ? "rgba(255, 255, 255, 0.97)" : "rgba(15, 23, 42, 0.96)";
+            const tooltipBorder = isLight ? "#CBD5E1" : "#334155";
+
+            // 趋势图截止日期统一计算到当前日期前的最后一个交易日
+            const { minTs, maxTs, chartRows } = precomputedWin || getChartWindow(rows, comm);
+
+            // 按图例年份分组（标准4月按近月交割年份，全年活跃按自然年），最新年份分配最醒目红色
+            const yearsAsc = Array.from(new Set(chartRows.map(r => r.seriesYear))).sort((a, b) => a - b);
+            const yearsDesc = yearsAsc.slice().reverse();
+            const legendSelected = syncSelectedYearsForChart(yearsAsc);
+
+            const yearColorMap = {};
+            yearsDesc.forEach((y, idx) => {
+                yearColorMap[y] = YEAR_PALETTE[idx % YEAR_PALETTE.length];
+            });
+
+            // 维护每年的按日历索引（用于 Tooltip 跨年全展示）
+            const rowsByYear = {};
+            yearsAsc.forEach(y => { rowsByYear[y] = []; });
+            chartRows.forEach(r => { rowsByYear[r.seriesYear].push(r); });
+
+            // 构建 ECharts series（自动在跨合约换月/断层处插入 null 防止假跳空斜线）
+            const latestYear = yearsAsc.length ? yearsAsc[yearsAsc.length - 1] : null;
+            const series = yearsAsc.map(year => {
+                const yRows = rowsByYear[year] || [];
+                const dataPoints = [];
+                let prevRow = null;
+
+                for (let i = 0; i < yRows.length; i++) {
+                    const r = yRows[i];
+                    if (prevRow) {
+                        const dayGap = (r.displayTs - prevRow.displayTs) / 86400000;
+                        if (r.pairKey !== prevRow.pairKey || dayGap > 22) {
+                            dataPoints.push({
+                                value: [Math.floor((prevRow.displayTs + r.displayTs) / 2), null]
+                            });
+                        }
+                    }
+                    dataPoints.push({
+                        value: [r.displayTs, r.spread],
+                        meta: r
+                    });
+                    prevRow = r;
+                }
+
+                const isLatest = (year === latestYear);
+                const color = yearColorMap[year];
+                const seriesObj = {
+                    name: `${year}年`,
+                    type: "line",
+                    data: dataPoints,
+                    showSymbol: false,
+                    symbol: "circle",
+                    symbolSize: isLatest ? 5 : 4,
+                    smooth: false,
+                    connectNulls: false,
+                    z: isLatest ? 10 : 5,
+                    lineStyle: {
+                        width: isLatest ? 1.5 : 1.1,
+                        color: color,
+                        opacity: isLatest ? 1 : 0.85
+                    },
+                    itemStyle: {
+                        color: color
+                    },
+                    emphasis: {
+                        focus: "series",
+                        lineStyle: { width: isLatest ? 2.2 : 1.8 }
+                    }
+                };
+
+                if (isLatest && yRows.length) {
+                    const lastR = yRows[yRows.length - 1];
+                    seriesObj.markPoint = {
+                        symbol: "circle",
+                        symbolSize: 6,
+                        label: {
+                            show: true,
+                            position: "top",
+                            distance: 6,
+                            formatter: `${formatSigned(lastR.spread)}`,
+                            color: color,
+                            fontWeight: 700,
+                            fontSize: 11,
+                            backgroundColor: isLight ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.85)",
+                            padding: [2, 5],
+                            borderRadius: 4
+                        },
+                        data: [{ coord: [lastR.displayTs, lastR.spread] }]
+                    };
+                }
+
+                return seriesObj;
+            });
+
+            // 零轴参考线挂载到当前可见的系列（优先挂载到当前/最新年份，避免隐藏早期年份时 0 轴消失）
+            if (series.length) {
+                const visibleSeries = series.slice().reverse().find(s => legendSelected[s.name] !== false) || series[series.length - 1];
+                visibleSeries.markLine = {
+                    silent: true,
+                    symbol: ["none", "none"],
+                    lineStyle: {
+                        color: isLight ? "#94A3B8" : "#64748B",
+                        type: "dashed",
+                        width: 1
+                    },
+                    label: {
+                        show: true,
+                        position: "insideEndTop",
+                        formatter: "0 轴 (平水)",
+                        color: textMuted,
+                        fontSize: 11
+                    },
+                    data: [{ yAxis: 0 }]
+                };
+            }
+
+            // 查找某年份在目标 MM-DD 精确或 ±3 天内最近记录（解决周末跨年对齐问题）
+            function findNearestForYear(year, targetTs) {
+                const list = rowsByYear[year];
+                if (!list || !list.length) return null;
+                let best = null;
+                let bestDiff = Infinity;
+                for (let i = 0; i < list.length; i++) {
+                    const diff = Math.abs(list[i].displayTs - targetTs);
+                    if (diff < bestDiff) {
+                        bestDiff = diff;
+                        best = list[i];
+                    }
+                }
+                const diffDays = bestDiff / 86400000;
+                if (diffDays <= 3) {
+                    return { row: best, exact: diffDays < 0.5 };
+                }
+                return null;
+            }
+
+            const { legA, legB } = getActiveLegs();
+            const priceLabel = PRICE_META[currentPriceField].label;
+
+            const option = {
+                backgroundColor: "transparent",
+                animationDuration: 350,
+                legend: {
+                    top: 0,
+                    left: "center",
+                    icon: "roundRect",
+                    itemWidth: 14,
+                    itemHeight: 2.5,
+                    itemGap: 18,
+                    textStyle: {
+                        color: textMain,
+                        fontSize: 12.5,
+                        fontWeight: 600
+                    },
+                    data: yearsAsc.map(y => `${y}年`),
+                    selected: legendSelected
+                },
+                grid: {
+                    left: 56,
+                    right: 40,
+                    top: 42,
+                    bottom: 66
+                },
+                tooltip: {
+                    trigger: "axis",
+                    backgroundColor: tooltipBg,
+                    borderColor: tooltipBorder,
+                    borderWidth: 1,
+                    padding: [10, 14],
+                    textStyle: {
+                        color: textMain,
+                        fontSize: 12
+                    },
+                    axisPointer: {
+                        type: "cross",
+                        lineStyle: { color: textMuted, type: "dashed", width: 1 },
+                        crossStyle: { color: textMuted, type: "dashed", width: 1 },
+                        label: {
+                            backgroundColor: isLight ? "#334155" : "#1E293B",
+                            color: "#F9FAFB",
+                            formatter: (p) => {
+                                if (p.axisDimension === "x") return formatMMDDFromTs(p.value);
+                                return formatSigned(Math.round(p.value * 10) / 10);
+                            }
+                        }
+                    },
+                    formatter: (params) => {
+                        if (!params || !params.length) return "";
+                        const validParam = params.find(p => p && p.value && p.value[0] != null);
+                        if (!validParam) return "";
+                        const hoverTs = validParam.value[0];
+                        const mmdd = formatMMDDFromTs(hoverTs);
+
+                        const lines = [
+                            `<div style="font-weight:700;font-size:13px;margin-bottom:6px;display:flex;justify-content:space-between;gap:14px;">
+                                <span>📅 ${mmdd} · ${comm.name}(${comm.code}) ${legA}-${legB}</span>
+                                <span style="color:${textMuted};font-weight:500;">${priceLabel}差</span>
+                            </div>`
+                        ];
+
+                        yearsDesc.forEach(year => {
+                            const sName = `${year}年`;
+                            if (selectedYearsMap[sName] === false) return;
+                            const found = findNearestForYear(year, hoverTs);
+                            if (!found) return;
+                            const r = found.row;
+                            const dotColor = yearColorMap[year];
+                            const valColor = r.spread > 0 ? (isLight ? "#DC2626" : "#F87171") : (r.spread < 0 ? (isLight ? "#059669" : "#34D399") : textMain);
+                            const approxTag = found.exact ? "" : ` <span style="font-size:10px;opacity:0.75;">(近邻 ${r.mmdd})</span>`;
+                            const spanBadge = currentMode === "full"
+                                ? ` <span style="font-size:10px;padding:0 4px;border-radius:3px;background:${r.isStandard4m ? 'rgba(59,130,246,0.18)' : 'rgba(245,158,11,0.18)'};color:${r.isStandard4m ? '#60A5FA' : '#FBBF24'};">${r.monthSpan}月</span>`
+                                : "";
+
+                            lines.push(
+                                `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:3px 0;${found.exact ? '' : 'opacity:0.78;'}">
+                                    <div style="display:flex;align-items:center;gap:6px;">
+                                        <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dotColor};"></span>
+                                        <span style="font-weight:700;">${year}年</span>
+                                        <span style="font-family:monospace;font-size:11px;color:${textMuted};">${r.pairKey}</span>${spanBadge}${approxTag}
+                                    </div>
+                                    <div style="text-align:right;font-variant-numeric:tabular-nums;">
+                                        <span style="font-weight:800;font-size:13px;color:${valColor};">${formatSigned(r.spread)}</span>
+                                        <span style="font-size:11px;color:${textMuted};margin-left:6px;">(${formatPrice(r.priceA)} - ${formatPrice(r.priceB)})</span>
+                                    </div>
+                                </div>`
+                            );
+                        });
+
+                        return lines.join("");
+                    }
+                },
+                xAxis: {
+                    type: "time",
+                    min: minTs,
+                    max: maxTs,
+                    splitNumber: 12,
+                    axisLine: { lineStyle: { color: axisLineColor } },
+                    axisTick: { lineStyle: { color: axisLineColor } },
+                    axisLabel: {
+                        color: textMuted,
+                        fontSize: 11.5,
+                        formatter: (value) => formatMMDDFromTs(value)
+                    },
+                    splitLine: {
+                        show: true,
+                        lineStyle: { color: splitLineColor, type: "dotted" }
+                    }
+                },
+                yAxis: {
+                    type: "value",
+                    scale: true,
+                    name: "价差 (元/吨)",
+                    nameTextStyle: { color: textMuted, fontSize: 11.5, padding: [0, 0, 0, 12] },
+                    axisLine: { show: false },
+                    axisLabel: {
+                        color: textMuted,
+                        fontSize: 11.5,
+                        formatter: (v) => (v > 0 ? "+" + v : String(v))
+                    },
+                    splitLine: {
+                        lineStyle: { color: splitLineColor }
+                    }
+                },
+                dataZoom: [
+                    {
+                        type: "inside",
+                        xAxisIndex: 0,
+                        filterMode: "none"
+                    },
+                    {
+                        type: "slider",
+                        xAxisIndex: 0,
+                        height: 22,
+                        bottom: 12,
+                        borderColor: axisLineColor,
+                        backgroundColor: isLight ? "rgba(229,231,235,0.4)" : "rgba(30,41,59,0.6)",
+                        fillerColor: "rgba(59, 130, 246, 0.22)",
+                        handleStyle: { color: "#3B82F6", borderColor: "#3B82F6" },
+                        textStyle: { color: textMuted, fontSize: 11 },
+                        labelFormatter: (val) => formatMMDDFromTs(val),
+                        filterMode: "none"
+                    }
+                ],
+                series: series
+            };
+
+            chartInstance.setOption(option, true);
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById("spread-table-body");
+            const countEl = document.getElementById("table-row-count");
+            const footerInfo = document.getElementById("table-footer-info");
+            const toggleBtn = document.getElementById("btn-toggle-all");
+
+            let filtered = currentComputedRows.slice();
+
+            if (tableYearFilter !== "ALL") {
+                const yNum = parseInt(tableYearFilter, 10);
+                filtered = filtered.filter(r => r.year === yNum);
+            }
+
+            if (tableSearch) {
+                const kw = tableSearch.toLowerCase();
+                filtered = filtered.filter(r =>
+                    r.date.toLowerCase().includes(kw) ||
+                    r.pairKey.toLowerCase().includes(kw)
+                );
+            }
+
+            filtered.sort((a, b) => {
+                const va = a[sortField];
+                const vb = b[sortField];
+                if (va === vb) return 0;
+                if (va === null || va === undefined) return 1;
+                if (vb === null || vb === undefined) return -1;
+                if (typeof va === "string") {
+                    return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                }
+                return sortAsc ? (va - vb) : (vb - va);
+            });
+
+            const total = filtered.length;
+            countEl.textContent = `共 ${total} 条记录`;
+
+            const displayRows = showAllRows ? filtered : filtered.slice(0, DEFAULT_ROW_LIMIT);
+
+            if (!displayRows.length) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:26px;">暂无匹配的合约价差记录</td></tr>`;
+                footerInfo.textContent = "显示 0 条记录";
+                toggleBtn.style.display = "none";
+                return;
+            }
+
+            const html = displayRows.map(r => {
+                const clsFor = (v) => (v === null || v === undefined ? "val-zero" : (v > 0 ? "val-up" : (v < 0 ? "val-down" : "val-zero")));
+                const spanTag = r.isStandard4m
+                    ? `<span class="span-tag m4">4月</span>`
+                    : `<span class="span-tag m8">${r.monthSpan || "?"}月</span>`;
+
+                return `<tr>
+                    <td>${r.date}</td>
+                    <td><span class="pair-badge">${r.pairKey} ${spanTag}</span></td>
+                    <td class="col-num">${formatPrice(r.priceA)}</td>
+                    <td class="col-num">${formatPrice(r.priceB)}</td>
+                    <td class="col-num ${clsFor(r.spreadO)}">${formatSigned(r.spreadO)}</td>
+                    <td class="col-num ${clsFor(r.spreadCl)}">${formatSigned(r.spreadCl)}</td>
+                    <td class="col-num ${clsFor(r.spreadH)}">${formatSigned(r.spreadH)}</td>
+                    <td class="col-num ${clsFor(r.spreadL)}">${formatSigned(r.spreadL)}</td>
+                    <td class="col-num ${clsFor(r.dailyDiff)}">${r.dailyDiff !== null ? formatSigned(r.dailyDiff) : "--"}</td>
+                </tr>`;
+            }).join("");
+
+            tbody.innerHTML = html;
+
+            if (total > DEFAULT_ROW_LIMIT) {
+                footerInfo.textContent = showAllRows
+                    ? `当前已展示全部 ${total} 条记录`
+                    : `当前展示前 ${displayRows.length} 条（共 ${total} 条）`;
+                toggleBtn.style.display = "inline-block";
+                toggleBtn.textContent = showAllRows ? "收起至前 80 条" : `展开全部 ${total} 条`;
+            } else {
+                footerInfo.textContent = `当前已展示全部 ${total} 条记录`;
+                toggleBtn.style.display = "none";
+            }
+        }
+
+        function initEventHandlers() {
+            // 合约对选择（桌面导航栏 + 移动端抽屉同步）
+            document.querySelectorAll(".seg-btn[data-pair]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    currentBasePair = btn.dataset.pair;
+                    showAllRows = false;
+                    renderDashboard();
+                });
+            });
+
+            // 价格口径切换 (开盘/收盘/最高/最低)
+            document.querySelectorAll(".seg-btn[data-price]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    currentPriceField = btn.dataset.price;
+                    renderDashboard();
+                });
+            });
+
+            // 跨期口径切换 (标准4月跨期 / 全年活跃对比)
+            document.querySelectorAll(".seg-btn[data-mode]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    currentMode = btn.dataset.mode;
+                    showAllRows = false;
+                    renderDashboard();
+                });
+            });
+
+            // 趋势图年份快捷切换（仅当前年 / 全部年份）
+            document.querySelectorAll(".seg-btn[data-year-scope]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    yearDisplayMode = btn.dataset.yearScope;
+                    if (dataset && dataset.commodities && dataset.commodities[currentCommodity]) {
+                        renderChart(currentComputedRows, dataset.commodities[currentCommodity]);
+                    }
+                });
+            });
+
+            // 表格年份筛选与搜索
+            document.getElementById("table-year-filter").addEventListener("change", (e) => {
+                tableYearFilter = e.target.value;
+                showAllRows = false;
+                renderTable();
+            });
+
+            document.getElementById("table-search").addEventListener("input", (e) => {
+                tableSearch = e.target.value.trim();
+                showAllRows = false;
+                renderTable();
+            });
+
+            document.getElementById("btn-toggle-all").addEventListener("click", () => {
+                showAllRows = !showAllRows;
+                renderTable();
+            });
+
+            // 表头排序
+            document.querySelectorAll("#spread-table th[data-sort]").forEach(th => {
+                th.addEventListener("click", () => {
+                    const field = th.dataset.sort;
+                    if (sortField === field) {
+                        sortAsc = !sortAsc;
+                    } else {
+                        sortField = field;
+                        sortAsc = false;
+                    }
+                    renderTable();
+                });
+            });
+
+            // 深浅主题切换
+            document.getElementById("btn-theme").addEventListener("click", toggleTheme);
+
+            // 移动端抽屉
+            document.getElementById("hamburger-btn").addEventListener("click", toggleDrawer);
+            document.getElementById("drawer-close").addEventListener("click", closeDrawer);
+            document.getElementById("drawer-backdrop").addEventListener("click", closeDrawer);
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") closeDrawer();
+            });
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem("coking_coal_theme");
+            if (saved === "light") {
+                document.body.classList.remove("theme-dark");
+                document.body.classList.add("theme-light");
+                document.getElementById("btn-theme").textContent = "☀️";
+            } else {
+                document.body.classList.remove("theme-light");
+                document.body.classList.add("theme-dark");
+                document.getElementById("btn-theme").textContent = "🌙";
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = document.body.classList.contains("theme-dark");
+            if (isDark) {
+                document.body.classList.remove("theme-dark");
+                document.body.classList.add("theme-light");
+                document.getElementById("btn-theme").textContent = "☀️";
+                localStorage.setItem("coking_coal_theme", "light");
+            } else {
+                document.body.classList.remove("theme-light");
+                document.body.classList.add("theme-dark");
+                document.getElementById("btn-theme").textContent = "🌙";
+                localStorage.setItem("coking_coal_theme", "dark");
+            }
+            if (dataset && dataset.commodities && dataset.commodities[currentCommodity]) {
+                renderChart(currentComputedRows, dataset.commodities[currentCommodity]);
+            }
+        }
+
+        function openDrawer() {
+            document.getElementById("drawer-panel").classList.add("open");
+            document.getElementById("drawer-backdrop").classList.add("visible");
+            document.getElementById("hamburger-btn").classList.add("active");
+            document.body.style.overflow = "hidden";
+        }
+
+        function closeDrawer() {
+            document.getElementById("drawer-panel").classList.remove("open");
+            document.getElementById("drawer-backdrop").classList.remove("visible");
+            document.getElementById("hamburger-btn").classList.remove("active");
+            document.body.style.overflow = "";
+        }
+
+        function toggleDrawer() {
+            if (document.getElementById("drawer-panel").classList.contains("open")) {
+                closeDrawer();
+            } else {
+                openDrawer();
+            }
+        }
+    </script>
+</body>
+
+</html>

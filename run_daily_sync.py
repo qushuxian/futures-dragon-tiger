@@ -25,6 +25,7 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODULES_DIR = os.path.join(CURRENT_DIR, "modules")
 POSITIONS_SCRIPT = os.path.join(MODULES_DIR, "sync_coking_coal_positions.py")
 RECEIPTS_SCRIPT = os.path.join(MODULES_DIR, "sync_coking_coal_receipts.py")
+SPREADS_SCRIPT = os.path.join(MODULES_DIR, "sync_czce_spread_bars.py")
 
 
 def run_step(step_num: int, total_steps: int, title: str, script_path: str, extra_args: list) -> bool:
@@ -59,17 +60,21 @@ def run_step(step_num: int, total_steps: int, title: str, script_path: str, extr
 
 
 def run_pipeline(extra_args: list = None) -> int:
-    """按序执行 1.龙虎榜 -> 2.仓单 整体同步流程"""
+    """按序执行 1.龙虎榜 -> 2.仓单 -> 3.郑商所纯碱/玻璃01·05·09跨期日行情 整体同步流程"""
     args = extra_args or []
     total_start = time.time()
 
     print("\n" + "#" * 72)
     print("  📊 大宗商品与期货系统 (DCE/CZCE/SHFE) 一键全自动同步流水线")
-    print("  时序规范：[1] 席位持仓龙虎榜  ──>  [2] 指定交割仓库仓单日报")
+    print("  时序规范：[1] 席位持仓龙虎榜 ──> [2] 交割仓单日报 ──> [3] 郑商所合约价差日行情")
     print("#" * 72)
 
     # 1. 检查模块依赖文件完整性
-    for path, name in [(POSITIONS_SCRIPT, "龙虎榜采集脚本"), (RECEIPTS_SCRIPT, "仓单日报采集脚本")]:
+    for path, name in [
+        (POSITIONS_SCRIPT, "龙虎榜采集脚本"),
+        (RECEIPTS_SCRIPT, "仓单日报采集脚本"),
+        (SPREADS_SCRIPT, "郑商所01/05/09合约日行情同步脚本"),
+    ]:
         if not os.path.exists(path):
             print(f"❌ 关键脚本不存在: {path} ({name})")
             return 1
@@ -77,7 +82,7 @@ def run_pipeline(extra_args: list = None) -> int:
     # 2. 步骤一：执行持仓龙虎榜
     success_positions = run_step(
         step_num=1,
-        total_steps=2,
+        total_steps=3,
         title="持仓龙虎榜与席位博弈全自动采集",
         script_path=POSITIONS_SCRIPT,
         extra_args=args
@@ -89,13 +94,25 @@ def run_pipeline(extra_args: list = None) -> int:
     # 3. 步骤二：执行仓单日报
     success_receipts = run_step(
         step_num=2,
-        total_steps=2,
+        total_steps=3,
         title="指定交割仓库仓单日报全自动采集",
         script_path=RECEIPTS_SCRIPT,
         extra_args=args
     )
     if not success_receipts:
-        print("\n⚠️ 仓单日报同步异常中断。")
+        print("\n⚠️ 仓单日报同步异常中断，跳过后续步骤。")
+        return 1
+
+    # 4. 步骤三：执行郑商所纯碱/玻璃 01/05/09 日行情增量同步与价差物化
+    success_spreads = run_step(
+        step_num=3,
+        total_steps=3,
+        title="郑商所纯碱/玻璃 01·05·09 合约日行情增量同步",
+        script_path=SPREADS_SCRIPT,
+        extra_args=args
+    )
+    if not success_spreads:
+        print("\n⚠️ 郑商所合约日行情同步异常中断。")
         return 1
 
     total_elapsed = time.time() - total_start
@@ -104,7 +121,8 @@ def run_pipeline(extra_args: list = None) -> int:
     print("📁 核心持久化底座: data/coking_coal.db (SQLite)")
     print("📊 龙虎榜数据源:   data/coking_coal_positions.json / .data.js")
     print("🏭 仓单全景数据源: data/coking_coal_receipts.json / .data.js")
-    print("🖥️  前端大屏看板:   coking_coal_dragon_tiger.html / coking_coal_receipt.html")
+    print("📈 合约价差数据源: data/czce_spread_bars.json / .data.js")
+    print("🖥️  前端大屏看板:   coking_coal_dragon_tiger.html / coking_coal_receipt.html / czce_contract_spread.html")
     print("=" * 72 + "\n")
 
     return 0
